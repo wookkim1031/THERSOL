@@ -1,12 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, PublicKey } from '@solana/web3.js';
-import { useEffect, useState } from 'react';
-import { clusterApiUrl } from "@solana/web3.js";
- 
+import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
+
 const network = clusterApiUrl("devnet");
-const connection = new Connection(network, 'confirmed');
+const connection = new Connection(network, "confirmed");
 
 interface SpeechRecognition extends EventTarget {
     lang: string;
@@ -14,14 +12,14 @@ interface SpeechRecognition extends EventTarget {
     start(): void;
     stop(): void;
     abort(): void;
-    addEventListener(
-        type: "result",
-        listener: (this: SpeechRecognition, ev: SpeechRecognitionEvent) => any
-    ): void;
-    addEventListener(
-        type: "end",
-        listener: (this: SpeechRecognition, ev: Event) => any
-    ): void;
+    onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+    onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+    onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+    readonly error: string;
+    readonly message: string;
 }
 
 interface SpeechRecognitionEvent extends Event {
@@ -46,44 +44,61 @@ interface SpeechRecognitionAlternative {
     readonly confidence: number;
 }
 
-const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-if (SpeechRecognition) {
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US'; // Set the language to English
-    recognition.interimResults = false; // Get only final results
-
-    // Event: Fired when speech is recognized
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = event.results[0][0].transcript;
-        console.log('You said:', transcript);
-    };
-
-    // Event: Fired when speech recognition ends
-    recognition.onend = () => {
-        console.log('Speech recognition ended.');
-    };
-
-    // Start speech recognition
-    recognition.start();
-} else {
-    console.error('SpeechRecognition API is not supported in this browser.');
-}
-
 const App: React.FC = () => {
     const { publicKey } = useWallet();
     const [balance, setBalance] = useState<number | null>(null);
+    const [transcript, setTranscript] = useState<string>("");
 
     useEffect(() => {
         if (publicKey) {
             const fetchBalance = async () => {
                 const lamports = await connection.getBalance(publicKey);
-                setBalance(lamports/ 1e9);
-            }
-            fetchBalance()
+                setBalance(lamports / 1e9);
+            };
+            fetchBalance();
         }
-    }, [publicKey])
+    }, [publicKey]);
 
+    useEffect(() => {
+        const SpeechRecognition =
+            (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            console.error("Web Speech API is not supported in this browser.");
+            return;
+        }
+
+        const recognition: SpeechRecognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.interimResults = false;
+
+        // Handle recognition results
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
+            const spokenText = event.results[0][0].transcript;
+            setTranscript(spokenText);
+        };
+
+        // Handle recognition end
+        recognition.onend = () => {
+            console.log("Speech recognition ended.");
+        };
+
+        // Handle errors
+        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+            console.error("Speech recognition error:", event.error);
+        };
+
+        const startButton = document.getElementById("start-btn");
+        startButton?.addEventListener("click", () => {
+            recognition.start();
+            console.log("Speech recognition started.");
+        });
+
+        return () => {
+            startButton?.removeEventListener("click", () => recognition.start());
+            recognition.abort();
+        };
+    }, []);
 
     return (
         <div>
@@ -91,7 +106,11 @@ const App: React.FC = () => {
             <h2>Please connect to a wallet</h2>
             <WalletMultiButton />
             {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
-            <p>Balance: {balance !== null ? `${balance} SOL` : 'Loading ...'}</p>
+            <p>Balance: {balance !== null ? `${balance} SOL` : "Loading..."}</p>
+
+            <h1>Speech to Text Demo</h1>
+            <button id="start-btn">Start Recording</button>
+            <p id="output">You said: {transcript}</p>
         </div>
     );
 };
