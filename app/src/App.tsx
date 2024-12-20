@@ -48,6 +48,8 @@ const App: React.FC = () => {
     const { publicKey } = useWallet();
     const [balance, setBalance] = useState<number | null>(null);
     const [transcript, setTranscript] = useState<string>("");
+    const [conversationHistory, setConversationHistory] = useState<string[]>([]);
+    const [isListening, setIsListening] = useState<boolean>(false); 
 
     useEffect(() => {
         if (publicKey) {
@@ -72,15 +74,18 @@ const App: React.FC = () => {
         recognition.lang = "en-US";
         recognition.interimResults = false;
 
-        // Handle recognition results
         recognition.onresult = (event: SpeechRecognitionEvent) => {
             const spokenText = event.results[0][0].transcript;
             setTranscript(spokenText);
         };
 
-        // Handle recognition end
         recognition.onend = () => {
+            if (transcript) {
+                setConversationHistory((prevHistory) => [...prevHistory, transcript]); 
+                setTranscript(""); 
+            }
             console.log("Speech recognition ended.");
+            setIsListening(false);
         };
 
         // Handle errors
@@ -88,17 +93,20 @@ const App: React.FC = () => {
             console.error("Speech recognition error:", event.error);
         };
 
-        const startButton = document.getElementById("start-btn");
-        startButton?.addEventListener("click", () => {
+        if (isListening) {
             recognition.start();
-            console.log("Speech recognition started.");
-        });
+        } else {
+            recognition.stop();
+        }
 
         return () => {
-            startButton?.removeEventListener("click", () => recognition.start());
-            recognition.abort();
+            recognition.abort(); // Cleanup on unmount
         };
-    }, []);
+    }, [isListening, transcript]);
+
+    const toggleListening = () => {
+        setIsListening(!isListening);
+    };
 
     return (
         <div>
@@ -109,8 +117,13 @@ const App: React.FC = () => {
             <p>Balance: {balance !== null ? `${balance} SOL` : "Loading..."}</p>
 
             <h1>Speech to Text Demo</h1>
-            <button id="start-btn">Start Recording</button>
+            <button onClick={toggleListening}>
+                {isListening ? "Stop Listening" : "Start Listening"}
+            </button>
             <p id="output">You said: {transcript}</p>
+            {conversationHistory.map((entry, index) => (
+                    <li key={index}>{entry}</li>
+                ))}
         </div>
     );
 };
