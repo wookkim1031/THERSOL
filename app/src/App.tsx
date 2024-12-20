@@ -115,15 +115,20 @@ const App: React.FC = () => {
             <WalletMultiButton />
             {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
             <p>Balance: {balance !== null ? `${balance} SOL` : "Loading..."}</p>
-
-            <h1>Speech to Text Demo</h1>
-            <button onClick={toggleListening}>
-                {isListening ? "Stop Listening" : "Start Listening"}
-            </button>
-            <p id="output">You said: {transcript}</p>
-            {conversationHistory.map((entry, index) => (
-                    <li key={index}>{entry}</li>
-                ))}
+            {publicKey ? (
+                <>
+                <h1>Speech to Text Demo</h1>
+                <button onClick={toggleListening}>
+                    {isListening ? "Stop Listening" : "Start Listening"}
+                </button>
+                <p id="output">You said: {transcript}</p>
+                {conversationHistory.map((entry, index) => (
+                        <li key={index}>{entry}</li>
+                    ))}
+                </>
+            ): (
+                <p>Please connect your wallet.</p>
+            ) }
         </div>
     );
 };
