@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
+import "./App.css";
+
 
 const network = clusterApiUrl("devnet");
 const connection = new Connection(network, "confirmed");
@@ -20,6 +22,12 @@ interface SpeechRecognition extends EventTarget {
 interface SpeechRecognitionErrorEvent extends Event {
     readonly error: string;
     readonly message: string;
+}
+
+interface APIResponse {
+    message: string;
+    message_at: string;
+    is_user: string,
 }
 
 interface SpeechRecognitionEvent extends Event {
@@ -50,6 +58,12 @@ const App: React.FC = () => {
     const [transcript, setTranscript] = useState<string>("");
     const [conversationHistory, setConversationHistory] = useState<string[]>([]);
     const [isListening, setIsListening] = useState<boolean>(false); 
+    const [response, setResponse] = useState<APIResponse | null>(null);
+    const [emotion, setEmotion] = useState<string>("");
+    const url = "/api/v1/slm/TheraSol/chat/";
+    const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
+    const emotionURL = "/api/v1/slm/motionundle/chat/";
+    const emotionAPIKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
 
     useEffect(() => {
         if (publicKey) {
@@ -88,7 +102,6 @@ const App: React.FC = () => {
             setIsListening(false);
         };
 
-        // Handle errors
         recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
             console.error("Speech recognition error:", event.error);
         };
@@ -100,35 +113,125 @@ const App: React.FC = () => {
         }
 
         return () => {
-            recognition.abort(); // Cleanup on unmount
+            recognition.abort();
         };
     }, [isListening, transcript]);
+
+    useEffect(() => {
+        if (response?.message) {
+            const speech = new SpeechSynthesisUtterance(response.message);
+            speech.lang = "en-GB";
+
+            const voices = window.speechSynthesis.getVoices();
+            const selectedVoice = voices.find((voice) =>
+                voice.name.includes("Daniel")
+            );
+            if (selectedVoice) speech.voice = selectedVoice;
+
+            window.speechSynthesis.speak(speech);
+        }
+    }, [response]);
+
+    useEffect(() => {
+        const sendRequest = async () => {
+            if (transcript) {
+                try {
+                    const conversationContext = 
+                    "Conversation until now: " + 
+                    conversationHistory.join(" ") + 
+                    ". If a previous conversation exists, answer the question based on the knowledge of the previous answers: " + 
+                    transcript;
+                    console.log(conversationContext)
+
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: {
+                            "X-Api-Key": apiKey,
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ query: conversationContext }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    setResponse(data)
+                    setConversationHistory((prevHistory) => [...prevHistory, data.message]); 
+                } catch (error) {
+                    console.error("Error sending request:", error);
+                }
+            }
+        };
+
+        sendRequest();
+    }, [transcript]);
+
+    useEffect(() => {
+        const sendEmotionRequest = async () => {
+            if (transcript) {
+                try {
+                    const response = await fetch(emotionURL, {
+                        method: "POST",
+                        headers: {
+                            "X-Api-Key": emotionAPIKey,
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ query: transcript }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    setEmotion(data.message);
+                } catch (error) {
+                    console.error("Error sending request:", error);
+                }
+            }
+        };
+
+        sendEmotionRequest();
+    }, [transcript]);
 
     const toggleListening = () => {
         setIsListening(!isListening);
     };
 
+
     return (
         <div>
-            <h1>Welcome to THERASOL</h1>
-            <h2>Please connect to a wallet</h2>
-            <WalletMultiButton />
-            {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
-            <p>Balance: {balance !== null ? `${balance} SOL` : "Loading..."}</p>
+            <div className="wallet-connect-card">
+                <h1>Welcome to THERASOL</h1>
+                <h2>Please connect to a wallet</h2>
+                <div className="wallet-button">
+                    <WalletMultiButton />
+                </div>
+                {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
+                <p>{balance !== null ? `Balance: ${balance} SOL` : ""}</p>
+            </div>
             {publicKey ? (
                 <>
-                <h1>Speech to Text Demo</h1>
-                <button onClick={toggleListening}>
-                    {isListening ? "Stop Listening" : "Start Listening"}
-                </button>
-                <p id="output">You said: {transcript}</p>
-                {conversationHistory.map((entry, index) => (
-                        <li key={index}>{entry}</li>
-                    ))}
+                    <h1>Speech to Text Demo</h1>
+                    <button onClick={toggleListening}>
+                        {isListening ? "Stop Listening" : "Start Listening"}
+                    </button>
+                    <p id="output">You said: {transcript}</p>
+                    <p className="response">Response: {response?.message}</p>
+                    <p>Emotion: {emotion}</p>
+                    <ul>
+                        {conversationHistory.map((entry, index) => (
+                            <li key={index}>
+                                {index % 2 === 0 ? "User: " : "TheraSol: "} {entry}
+                            </li>
+                        ))}
+                    </ul>
                 </>
-            ): (
-                <p>Please connect your wallet.</p>
-            ) }
+            ) : (
+                <p></p>
+            )}
         </div>
     );
 };

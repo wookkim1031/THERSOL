@@ -2,9 +2,11 @@
   "name": "app",
   "version": "0.1.0",
   "private": true,
+  "proxy": "https://api.assisterr.ai/",
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@firebasegen/default-connector": "link:dataconnect-generated/js/default-connector",
     "@google-cloud/speech": "^6.7.0",
     "@solana/wallet-adapter-react": "^0.15.35",
     "@solana/wallet-adapter-react-ui": "^0.9.35",
@@ -19,12 +21,17 @@
     "@types/react-dom": "^18.0.0",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.1",
+    "firebase": "^11.1.0",
+    "http-proxy-middleware": "^3.0.3",
+    "node-fetch": "^3.3.2",
     "node-polyfill-webpack-plugin": "^4.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.0.2",
     "react-scripts": "5.0.1",
+    "react-text-to-speech": "^1.0.1",
     "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
     "typescript": "^4.4.2",
     "web-vitals": "^2.1.0",
     "zlib-browserify": "^0.0.3"
@@ -52,5 +59,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "webpack-cli": "^6.0.0"
   }
 }
