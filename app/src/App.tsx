@@ -169,7 +169,7 @@ const App: React.FC = () => {
                     setConversationHistory((prevHistory) => [...prevHistory, responseData.message]);
     
                     // emotion Detection 
-                    const emotionResponse = await fetch("/api/v1/slm/motionundle/chat", {
+                    const emotionResponse = await fetch("/api/v1/slm/motionundle/chat/", {
                         method: "POST",
                         headers: {
                             "X-Api-Key": emotionAPIKey,
