@@ -319,4 +319,182 @@ describe("thera-sol", () => {
       }
     });
   });
+
+  describe("Fund Management", () => {
+    it("Can reclaim funds", async () => {
+      // Create a new keypair for this test
+      const testUser = Keypair.generate();
+      const userPDA = await getUserPDA(testUser.publicKey);
+      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
+      const reclaimAmount = new anchor.BN(0.5 * LAMPORTS_PER_SOL); // 0.5 SOL
+
+      // Fund the test user
+      const fundTx = await provider.connection.requestAirdrop(
+        testUser.publicKey,
+        2 * LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(fundTx);
+
+      // Initialize the account
+      await program.methods
+        .initializeUser()
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
+
+      // Deposit funds
+      await program.methods
+        .depositFunds(depositAmount)
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
+
+      // Get initial balances
+      const userInitialBalance = await provider.connection.getBalance(testUser.publicKey);
+      const pdaInitialBalance = await provider.connection.getBalance(userPDA);
+
+      // Reclaim funds
+      await program.methods
+        .reclaimFunds(reclaimAmount)
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+        })
+        .signers([testUser])
+        .rpc();
+
+      // Check balances after reclaim
+      const userFinalBalance = await provider.connection.getBalance(testUser.publicKey);
+      const pdaFinalBalance = await provider.connection.getBalance(userPDA);
+      const userAccount = await program.account.userAccount.fetch(userPDA);
+
+      // Verify balances
+      expect(userFinalBalance).to.be.above(userInitialBalance);
+      expect(pdaFinalBalance).to.equal(pdaInitialBalance - reclaimAmount.toNumber());
+      expect(userAccount.balance.toNumber()).to.equal(depositAmount.toNumber() - reclaimAmount.toNumber());
+    });
+
+    it("Cannot reclaim more than available balance", async () => {
+      // Create a new keypair for this test
+      const testUser = Keypair.generate();
+      const userPDA = await getUserPDA(testUser.publicKey);
+      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
+      const reclaimAmount = new anchor.BN(2 * LAMPORTS_PER_SOL); // 2 SOL (more than deposited)
+
+      // Fund the test user
+      const fundTx = await provider.connection.requestAirdrop(
+        testUser.publicKey,
+        2 * LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(fundTx);
+
+      // Initialize the account
+      await program.methods
+        .initializeUser()
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
+
+      // Deposit funds
+      await program.methods
+        .depositFunds(depositAmount)
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
+
+      try {
+        // Try to reclaim more than deposited
+        await program.methods
+          .reclaimFunds(reclaimAmount)
+          .accounts({
+            user: testUser.publicKey,
+            userAccount: userPDA,
+          })
+          .signers([testUser])
+          .rpc();
+        assert.fail("Expected error was not thrown");
+      } catch (error) {
+        expect(error.toString()).to.include("InsufficientBalance");
+      }
+    });
+
+    it("Cannot reclaim funds during active session", async () => {
+      // Create a new keypair for this test
+      const testUser = Keypair.generate();
+      const userPDA = await getUserPDA(testUser.publicKey);
+      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
+      const reclaimAmount = new anchor.BN(0.5 * LAMPORTS_PER_SOL); // 0.5 SOL
+      const startTime = new anchor.BN(Math.floor(Date.now() / 1000));
+
+      // Fund the test user
+      const fundTx = await provider.connection.requestAirdrop(
+        testUser.publicKey,
+        2 * LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(fundTx);
+
+      // Initialize the account
+      await program.methods
+        .initializeUser()
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
+
+      // Deposit funds
+      await program.methods
+        .depositFunds(depositAmount)
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
+
+      // Start a session
+      await program.methods
+        .startSession(startTime)
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+        })
+        .signers([testUser])
+        .rpc();
+
+      try {
+        // Try to reclaim funds during session
+        await program.methods
+          .reclaimFunds(reclaimAmount)
+          .accounts({
+            user: testUser.publicKey,
+            userAccount: userPDA,
+          })
+          .signers([testUser])
+          .rpc();
+        assert.fail("Expected error was not thrown");
+      } catch (error) {
+        expect(error.toString()).to.include("InSession");
+      }
+    });
+  });
 });
