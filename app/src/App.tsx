@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, clusterApiUrl } from "@solana/web3.js";
+import { Connection, clusterApiUrl, Transaction, SystemProgram, PublicKey } from "@solana/web3.js";
 import "./App.css";
-import { NOTIMP } from "dns";
+import "@solana/wallet-adapter-react-ui/styles.css";
 
 
 const network = clusterApiUrl("devnet");
@@ -53,19 +53,45 @@ interface SpeechRecognitionAlternative {
     readonly confidence: number;
 }
 
+interface Emotions {
+    Joy: number;
+    Sadness: number;
+    Anger: number;
+    Fear: number;
+    Disgust: number;
+}
+
+
 const App: React.FC = () => {
-    const { publicKey } = useWallet();
+    const { publicKey, sendTransaction } = useWallet();
     const [balance, setBalance] = useState<number | null>(null);
     const [transcript, setTranscript] = useState<string>("");
     const [conversationHistory, setConversationHistory] = useState<string[]>([]);
     const [isListening, setIsListening] = useState<boolean>(false); 
     const [response, setResponse] = useState<APIResponse | null>(null);
-    const [emotion, setEmotion] = useState<string>("");
+    const [finalResponse, setFinalResponse] = useState<APIResponse | null>(null);
+    const [emotion, setEmotion] = useState<[string, number][] | null>(null);
+    const [isConnecting, setIsConnecting] = useState(false);
     const url = "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/";
     const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
     const emotionURL = "https://api.assisterr.ai/api/v1/slm/motionundle/chat/";
     const emotionAPIKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
+    const myPublicKey = new PublicKey("A6aGukho6tY2abd8h7pcsLsQRgncu9WBjy3mYSjqUTAJ");
+    const paymentAmount = 0.001 * Math.pow(10, 9);
 
+    useEffect(() => {
+        if (publicKey) {
+            setIsConnecting(false);
+        }
+    }, [publicKey]);
+
+    const Emotions = [
+        { name: "Joy", value: 0 },
+        { name: "Sadness", value: 0 },
+        { name: "Anger", value: 0 },
+        { name: "Fear", value: 0 },
+        { name: "Disgust", value: 0 },
+    ];
     useEffect(() => {
         if (publicKey) {
             const fetchBalance = async () => {
@@ -169,7 +195,7 @@ const App: React.FC = () => {
                     setConversationHistory((prevHistory) => [...prevHistory, responseData.message]);
     
                     // emotion Detection 
-                    const emotionResponse = await fetch("/api/v1/slm/motionundle/chat", {
+                    const emotionResponse = await fetch("/api/v1/slm/motionundle/chat/", {
                         method: "POST",
                         headers: {
                             "X-Api-Key": emotionAPIKey,
@@ -183,8 +209,15 @@ const App: React.FC = () => {
                     }
     
                     const emotionData = await emotionResponse.json();
-                    setEmotion(emotionData.message);
-                    console.log(emotionData.message);
+                    const rawPairs = emotionData.message.replace(/[{}]/g, "").split(",");
+
+                    const parsedEmotion = rawPairs.map((pair:string) => {
+                        const [key, value] = pair.split(":");
+                        return [key.replace(/"/g, ""), parseFloat(value)] as [string, number];
+                    });
+
+                    setEmotion(parsedEmotion);
+                    console.log(parsedEmotion);
     
                 } catch (error) {
                     console.error("Error in sendRequest:", error);
@@ -198,39 +231,146 @@ const App: React.FC = () => {
         setIsListening(!isListening);
     };
 
+    const pay = async () =>{
+        if (!publicKey) {
+            return false;
+        }
+
+        const lamportsNeeded = paymentAmount + 5000; 
+        const balance = await connection.getBalance(publicKey);
+
+        if (balance < lamportsNeeded) {
+            alert("Insufficient SOL balance. Please add funds to your wallet.");
+            return false;
+        }
+
+        try {
+            const transaction = new Transaction().add(
+                SystemProgram.transfer({
+                    fromPubkey: publicKey,
+                    toPubkey: myPublicKey,
+                    lamports: paymentAmount,
+                })
+            );
+            const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+            const signature = await sendTransaction(transaction, connection);
+            await connection.confirmTransaction(signature, "confirmed");
+            alert("Payment successful! You can now request a suggestion.");
+            return true;
+        } catch (error) {
+            console.error("Payment failed:", error);
+            if (error === "WalletSendTransactionError") {
+                alert("Transaction failed. Please check your wallet and try again.");
+            } else {
+                alert("Unexpected error occurred. Please try again.");
+            }
+            return false;
+        }
+        }
+
+    const giveSuggestion = async () => {
+        const paymentSuccess = await pay(); // Ensure payment is successful
+        if (!paymentSuccess) return; 
+
+        try {
+            const emotionsString = Emotions.map((item) => `${item.name}: ${item.value}`).join(", ");
+            const summary = 
+                "Give a summary and suggestion about person's situation and how the person feels using emotion"
+                + conversationHistory
+                + "Also rate the person's emotion based on the Emotion. The higher the score is the higher the emotion is"
+                + emotionsString;
+            const response = await fetch("/api/v1/slm/TheraSol/chat/", {
+                method: "POST",
+                headers: {
+                    "X-Api-Key": apiKey,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ query: summary }),
+            });
+    
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+    
+            const responseData = await response.json();
+            setFinalResponse(responseData.message);
+        } catch (error) {
+            console.error("Error in giveSuggestion:", error);
+        }
+    };
+    
 
     return (
-        <div>
-            <div className="wallet-connect-card">
+        <div id="root-container">
+            <div className="header">
                 <h1>Welcome to THERASOL</h1>
-                <h2>Please connect to a wallet</h2>
-                <p>Currently only working on Chrome</p>
-                <div className="wallet-button">
-                    <WalletMultiButton />
+            </div>
+            <p>Currently supported on Chrome</p>
+            <h2>Connect to a Wallet</h2>
+            <div className="wallet-connect-card">
+                <div className={`wallet-button-wrapper ${
+                        publicKey ? "connected" : isConnecting ? "" : "connecting"
+                    }`}
+                >
+                    <WalletMultiButton
+                        className={`wallet-button ${publicKey ? "connected" : ""}`}
+                        onClick={() => {
+                            if (!publicKey) setIsConnecting(true);
+                        }}
+                    />
                 </div>
                 {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
                 <p>{balance !== null ? `Balance: ${balance} SOL` : ""}</p>
             </div>
-            {publicKey ? (
-                <>
-                    <h1>Speech to Text Demo</h1>
-                    <button onClick={toggleListening}>
-                        {isListening ? "Stop Listening" : "Start Listening"}
-                    </button>
-                    <p id="output">You said: {transcript}</p>
-                    <p className="response">Response: {response?.message}</p>
-
-                    <ul>
-                        {conversationHistory.map((entry, index) => (
-                            <li key={index}>
-                                {index % 2 === 0 ? "User: " : "TheraSol: "} {entry}
-                            </li>
+    
+            <div className="main-content">
+                <h1>Speech to Text and Suggestions</h1>
+                {transcript ? (<button onClick={toggleListening} disabled={!publicKey}>
+                    {isListening ? "Stop Talking" : "Start Talking"}
+                            </button>
+                ): (<button onClick={toggleListening} disabled={!publicKey}>
+                    {isListening ? "Stop Talking" : "Continue Talking"}
+                </button>)
+                }
+    
+                {isListening && <div className="loading"></div>}
+    
+                <p id="output">User: {transcript}</p>
+                <p className="response">{response?.message && `Response: ${response.message}`}</p>
+    
+                <ul>
+                    {conversationHistory.map((entry, index) => (
+                        <li
+                        key={index}
+                        style={{
+                            color: index % 2 === 0 ? "#007bff" : "#28a745", 
+                            fontWeight: index % 2 === 0 ? "bold" : "normal", 
+                        }}
+                        >
+                            {index % 2 === 0 ? "User: " : "TheraSol: "} {entry}
+                        </li>
+                    ))}
+                </ul>
+    
+                {emotion && (
+                    <div className="emotion-list">
+                        {emotion.map(([key, value]) => (
+                            <div key={key} className="emotion-item">
+                                <span className="emotion-key">{key}</span>: <span className="emotion-value">{value}</span>
+                            </div>
                         ))}
-                    </ul>
-                </>
-            ) : (
-                <p></p>
-            )}
+                    </div>
+                )}
+    
+                {emotion && (
+                    <button onClick={giveSuggestion} disabled={isListening}>
+                        Finalize and Get Suggestion <br />
+                        Costs: 0.001 SOL + Gas: 0.00003 SOL
+                    </button>
+                )}
+                {finalResponse && <div className="loading"></div>}
+                {finalResponse && <div className="response">{finalResponse.message}</div>}
+            </div>
         </div>
     );
 };
