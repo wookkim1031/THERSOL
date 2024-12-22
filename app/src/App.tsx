@@ -151,9 +151,8 @@ const App: React.FC = () => {
                     console.log("Conversation Context:", conversationContext);
     
                     // Send main API request for response
-                    const response = await fetch("https://api.assisterr.ai/api/v1/slm/TheraSol/chat/", {
+                    const response = await fetch("/api/v1/slm/TheraSol/chat/", {
                         method: "POST",
-                        mode: "no-cors",
                         headers: {
                             "X-Api-Key": apiKey,
                             "Content-Type": "application/json",
@@ -170,9 +169,8 @@ const App: React.FC = () => {
                     setConversationHistory((prevHistory) => [...prevHistory, responseData.message]);
     
                     // emotion Detection 
-                    const emotionResponse = await fetch("https://api.assisterr.ai/api/v1/slm/motionundle/chat", {
+                    const emotionResponse = await fetch("/api/v1/slm/motionundle/chat", {
                         method: "POST",
-                        mode: "no-cors",
                         headers: {
                             "X-Api-Key": emotionAPIKey,
                             "Content-Type": "application/json",
