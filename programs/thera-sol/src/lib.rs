@@ -17,8 +17,6 @@ pub mod thera_sol {
     }
 
     pub fn deposit_funds(ctx: Context<DepositFunds>, amount: u64) -> Result<()> {
-        let user_account = &mut ctx.accounts.user_account;
-
         // Transfer SOL from user to the PDA
         let cpi_context = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -27,10 +25,11 @@ pub mod thera_sol {
                 to: ctx.accounts.user_account.to_account_info(),
             },
         );
-
+        
         anchor_lang::system_program::transfer(cpi_context, amount)?;
-
+        
         // Update user balance
+        let user_account = &mut ctx.accounts.user_account;
         user_account.balance = user_account.balance.checked_add(amount)
             .ok_or(ErrorCode::CalculationOverflow)?;
 
