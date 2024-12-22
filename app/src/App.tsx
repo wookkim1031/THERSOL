@@ -103,9 +103,14 @@ const App: React.FC = () => {
             setIsListening(false);
         };
 
-        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-            console.error("Speech recognition error:", event.error);
-        };
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            if (event.error === 'aborted') {
+              console.warn('Speech recognition aborted.');
+            } else {
+              console.error('Unhandled error:', event.error);
+            }
+          };
 
         if (isListening) {
             recognition.start();
