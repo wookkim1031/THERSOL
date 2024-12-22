@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { TheraSol } from "../target/types/thera_sol";
-import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { PublicKey, LAMPORTS_PER_SOL, Keypair } from "@solana/web3.js";
 import { expect } from 'chai';
 
 describe("thera-sol", () => {
@@ -22,20 +22,29 @@ describe("thera-sol", () => {
 
   describe("User Account Management", () => {
     it("Initialize user account", async () => {
-      const userPDA = await getUserPDA(user.publicKey);
+      // Create a new keypair for this test
+      const testUser = Keypair.generate();
+      const userPDA = await getUserPDA(testUser.publicKey);
       
-      const tx = await program.methods
+      // Fund the test user
+      const fundTx = await provider.connection.requestAirdrop(
+        testUser.publicKey,
+        2 * LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(fundTx);
+
+      await program.methods
         .initializeUser()
         .accounts({
-          user: user.publicKey,
+          user: testUser.publicKey,
           userAccount: userPDA,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
+        .signers([testUser])
         .rpc();
 
       const userAccount = await program.account.userAccount.fetch(userPDA);
-      
-      expect(userAccount.owner.toString()).to.equal(user.publicKey.toString());
+      expect(userAccount.owner.toString()).to.equal(testUser.publicKey.toString());
       expect(userAccount.balance.toNumber()).to.equal(0);
       expect(userAccount.startTime.toNumber()).to.equal(0);
       expect(userAccount.endTime.toNumber()).to.equal(0);
@@ -43,16 +52,38 @@ describe("thera-sol", () => {
     });
 
     it("Deposit funds", async () => {
-      const userPDA = await getUserPDA(user.publicKey);
+      // Create a new keypair for this test
+      const testUser = Keypair.generate();
+      const userPDA = await getUserPDA(testUser.publicKey);
       const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
 
-      const tx = await program.methods
-        .depositFunds(depositAmount)
+      // Fund the test user
+      const fundTx = await provider.connection.requestAirdrop(
+        testUser.publicKey,
+        2 * LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(fundTx);
+
+      // Initialize the account
+      await program.methods
+        .initializeUser()
         .accounts({
-          user: user.publicKey,
+          user: testUser.publicKey,
           userAccount: userPDA,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
+        .signers([testUser])
+        .rpc();
+
+      // Deposit funds
+      await program.methods
+        .depositFunds(depositAmount)
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
         .rpc();
 
       const userAccount = await program.account.userAccount.fetch(userPDA);
@@ -62,15 +93,36 @@ describe("thera-sol", () => {
 
   describe("Session Management", () => {
     it("Start session", async () => {
-      const userPDA = await getUserPDA(user.publicKey);
+      // Create a new keypair for this test
+      const testUser = Keypair.generate();
+      const userPDA = await getUserPDA(testUser.publicKey);
       const startTime = new anchor.BN(Math.floor(Date.now() / 1000));
 
-      const tx = await program.methods
+      // Fund the test user
+      const fundTx = await provider.connection.requestAirdrop(
+        testUser.publicKey,
+        2 * LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(fundTx);
+
+      // Initialize the account
+      await program.methods
+        .initializeUser()
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
+
+      await program.methods
         .startSession(startTime)
         .accounts({
-          user: user.publicKey,
+          user: testUser.publicKey,
           userAccount: userPDA,
         })
+        .signers([testUser])
         .rpc();
 
       const userAccount = await program.account.userAccount.fetch(userPDA);
@@ -79,33 +131,98 @@ describe("thera-sol", () => {
     });
 
     it("Cannot start another session while one is active", async () => {
-      const userPDA = await getUserPDA(user.publicKey);
-      const newStartTime = new anchor.BN(Math.floor(Date.now() / 1000));
+      // Create a new keypair for this test
+      const testUser = Keypair.generate();
+      const userPDA = await getUserPDA(testUser.publicKey);
+      const startTime = new anchor.BN(Math.floor(Date.now() / 1000));
+
+      // Fund the test user
+      const fundTx = await provider.connection.requestAirdrop(
+        testUser.publicKey,
+        2 * LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(fundTx);
+
+      // Initialize the account
+      await program.methods
+        .initializeUser()
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
+
+      // Start first session
+      await program.methods
+        .startSession(startTime)
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+        })
+        .signers([testUser])
+        .rpc();
 
       try {
+        // Try to start another session
         await program.methods
-          .startSession(newStartTime)
+          .startSession(startTime)
           .accounts({
-            user: user.publicKey,
+            user: testUser.publicKey,
             userAccount: userPDA,
           })
+          .signers([testUser])
           .rpc();
-        expect.fail("Should have thrown AlreadyInSession error");
+        assert.fail("Expected error was not thrown");
       } catch (error) {
         expect(error.toString()).to.include("AlreadyInSession");
       }
     });
 
     it("End session", async () => {
-      const userPDA = await getUserPDA(user.publicKey);
+      // Create a new keypair for this test
+      const testUser = Keypair.generate();
+      const userPDA = await getUserPDA(testUser.publicKey);
+      const startTime = new anchor.BN(Math.floor(Date.now() / 1000));
       const endTime = new anchor.BN(Math.floor(Date.now() / 1000) + 3600); // 1 hour later
 
-      const tx = await program.methods
-        .endSession(endTime)
+      // Fund the test user
+      const fundTx = await provider.connection.requestAirdrop(
+        testUser.publicKey,
+        2 * LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(fundTx);
+
+      // Initialize the account
+      await program.methods
+        .initializeUser()
         .accounts({
-          user: user.publicKey,
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
+
+      // Start a session
+      await program.methods
+        .startSession(startTime)
+        .accounts({
+          user: testUser.publicKey,
           userAccount: userPDA,
         })
+        .signers([testUser])
+        .rpc();
+
+      // End the session
+      await program.methods
+        .endSession(endTime)
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+        })
+        .signers([testUser])
         .rpc();
 
       const userAccount = await program.account.userAccount.fetch(userPDA);
@@ -114,48 +231,89 @@ describe("thera-sol", () => {
     });
 
     it("Cannot end session when not in session", async () => {
-      const userPDA = await getUserPDA(user.publicKey);
+      // Create a new keypair for this test
+      const testUser = Keypair.generate();
+      const userPDA = await getUserPDA(testUser.publicKey);
       const endTime = new anchor.BN(Math.floor(Date.now() / 1000));
+
+      // Fund the test user
+      const fundTx = await provider.connection.requestAirdrop(
+        testUser.publicKey,
+        2 * LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(fundTx);
+
+      // Initialize the account
+      await program.methods
+        .initializeUser()
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
 
       try {
         await program.methods
           .endSession(endTime)
           .accounts({
-            user: user.publicKey,
+            user: testUser.publicKey,
             userAccount: userPDA,
           })
+          .signers([testUser])
           .rpc();
-        expect.fail("Should have thrown NotInSession error");
+        assert.fail("Expected error was not thrown");
       } catch (error) {
         expect(error.toString()).to.include("NotInSession");
       }
     });
 
     it("Cannot end session with invalid timestamp", async () => {
-      const userPDA = await getUserPDA(user.publicKey);
+      // Create a new keypair for this test
+      const testUser = Keypair.generate();
+      const userPDA = await getUserPDA(testUser.publicKey);
       const startTime = new anchor.BN(Math.floor(Date.now() / 1000));
-      
-      // Start a new session
+      const invalidEndTime = new anchor.BN(Math.floor(Date.now() / 1000) - 3600); // 1 hour ago
+
+      // Fund the test user
+      const fundTx = await provider.connection.requestAirdrop(
+        testUser.publicKey,
+        2 * LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(fundTx);
+
+      // Initialize the account
+      await program.methods
+        .initializeUser()
+        .accounts({
+          user: testUser.publicKey,
+          userAccount: userPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([testUser])
+        .rpc();
+
+      // Start a session
       await program.methods
         .startSession(startTime)
         .accounts({
-          user: user.publicKey,
+          user: testUser.publicKey,
           userAccount: userPDA,
         })
+        .signers([testUser])
         .rpc();
-
-      // Try to end session with earlier timestamp
-      const invalidEndTime = new anchor.BN(startTime.toNumber() - 3600);
 
       try {
         await program.methods
           .endSession(invalidEndTime)
           .accounts({
-            user: user.publicKey,
+            user: testUser.publicKey,
             userAccount: userPDA,
           })
+          .signers([testUser])
           .rpc();
-        expect.fail("Should have thrown InvalidEndTime error");
+        assert.fail("Expected error was not thrown");
       } catch (error) {
         expect(error.toString()).to.include("InvalidEndTime");
       }
