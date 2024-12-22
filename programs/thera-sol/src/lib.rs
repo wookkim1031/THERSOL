@@ -53,21 +53,35 @@ pub mod thera_sol {
     pub fn end_session(ctx: Context<EndSession>, timestamp: i64) -> Result<()> {
         let user_account = &mut ctx.accounts.user_account;
 
-        // Ensure user is in an active session
-        require!(
-            user_account.start_time != 0 && user_account.end_time == 0,
-            ErrorCode::NotInSession
-        );
+        // Verify user is in a session
+        require!(user_account.start_time > 0, ErrorCode::NotInSession);
 
-        // Ensure end time is after start time
-        require!(
-            timestamp > user_account.start_time,
-            ErrorCode::InvalidEndTime
-        );
+        // Verify timestamp is valid (after start time)
+        require!(timestamp > user_account.start_time, ErrorCode::InvalidEndTime);
 
         user_account.end_time = timestamp;
-        user_account.total_sessions = user_account.total_sessions.checked_add(1)
-            .ok_or(ErrorCode::CalculationOverflow)?;
+        user_account.total_sessions += 1;
+        Ok(())
+    }
+
+    pub fn reclaim_funds(ctx: Context<ReclaimFunds>, amount: u64) -> Result<()> {
+        let user_account = &mut ctx.accounts.user_account;
+
+        // Verify user is not in a session
+        require!(user_account.start_time == 0, ErrorCode::InSession);
+
+        // Verify user has enough balance
+        require!(user_account.balance >= amount, ErrorCode::InsufficientBalance);
+
+        // Update user balance first
+        user_account.balance -= amount;
+
+        // Transfer SOL from PDA to user
+        let from = &ctx.accounts.user_account;
+        let to = &ctx.accounts.user;
+        **from.to_account_info().try_borrow_mut_lamports()? -= amount;
+        **to.to_account_info().try_borrow_mut_lamports()? += amount;
+
         Ok(())
     }
 }
@@ -131,6 +145,17 @@ pub struct EndSession<'info> {
     pub user: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct ReclaimFunds<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(
+        mut,
+        constraint = user_account.owner == user.key()
+    )]
+    pub user_account: Account<'info, UserAccount>,
+}
+
 #[account]
 pub struct UserAccount {
     pub owner: Pubkey,
@@ -155,8 +180,12 @@ pub enum ErrorCode {
     CalculationOverflow,
     #[msg("User is already in an active session")]
     AlreadyInSession,
-    #[msg("User is not in an active session")]
+    #[msg("User is not in a session")]
     NotInSession,
     #[msg("End time must be after start time")]
     InvalidEndTime,
+    #[msg("User is currently in a session")]
+    InSession,
+    #[msg("Insufficient balance")]
+    InsufficientBalance,
 }
