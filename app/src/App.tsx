@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
+import { Connection, clusterApiUrl } from "@solana/web3.js";
 import "./App.css";
 
 
@@ -166,7 +166,7 @@ const App: React.FC = () => {
         };
 
         sendRequest();
-    }, [transcript]);
+    }, [transcript, conversationHistory]);
 
     useEffect(() => {
         const sendEmotionRequest = async () => {
