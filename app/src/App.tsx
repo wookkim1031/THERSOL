@@ -153,6 +153,7 @@ const App: React.FC = () => {
                     // Send main API request for response
                     const response = await fetch("https://api.assisterr.ai/api/v1/slm/TheraSol/chat/", {
                         method: "POST",
+                        mode: "no-cors",
                         headers: {
                             "X-Api-Key": apiKey,
                             "Content-Type": "application/json",
@@ -171,6 +172,7 @@ const App: React.FC = () => {
                     // emotion Detection 
                     const emotionResponse = await fetch("https://api.assisterr.ai/api/v1/slm/motionundle/chat", {
                         method: "POST",
+                        mode: "no-cors",
                         headers: {
                             "X-Api-Key": emotionAPIKey,
                             "Content-Type": "application/json",
