@@ -62,9 +62,9 @@ const App: React.FC = () => {
     const [response, setResponse] = useState<APIResponse | null>(null);
     const [emotion, setEmotion] = useState<string>("");
     const url = "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/";
-    const apiKey = "https://api.assisterr.ai/oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
+    const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
     const emotionURL = "https://api.assisterr.ai/api/v1/slm/motionundle/chat/";
-    const emotionAPIKey = "https://api.assisterr.ai/oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
+    const emotionAPIKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
 
     useEffect(() => {
         if (publicKey) {
@@ -146,7 +146,7 @@ const App: React.FC = () => {
                     console.log("Conversation Context:", conversationContext);
     
                     // Send main API request for response
-                    const response = await fetch(url, {
+                    const response = await fetch("/api/v1/slm/TheraSol/chat", {
                         method: "POST",
                         headers: {
                             "X-Api-Key": apiKey,
@@ -164,7 +164,7 @@ const App: React.FC = () => {
                     setConversationHistory((prevHistory) => [...prevHistory, responseData.message]);
     
                     // emotion Detection 
-                    const emotionResponse = await fetch(emotionURL, {
+                    const emotionResponse = await fetch("/api/v1/slm/motionundle/chat", {
                         method: "POST",
                         headers: {
                             "X-Api-Key": emotionAPIKey,
