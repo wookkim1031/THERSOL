@@ -226,6 +226,7 @@ const App: React.FC = () => {
                                 {index % 2 === 0 ? "User: " : "TheraSol: "} {entry}
                             </li>
                         ))}
+                        {emotion}
                     </ul>
                 </>
             ) : (
