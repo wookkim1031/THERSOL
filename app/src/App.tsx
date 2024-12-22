@@ -199,6 +199,7 @@ const App: React.FC = () => {
             <div className="wallet-connect-card">
                 <h1>Welcome to THERASOL</h1>
                 <h2>Please connect to a wallet</h2>
+                <p>Currently only working on Chrome</p>
                 <div className="wallet-button">
                     <WalletMultiButton />
                 </div>
