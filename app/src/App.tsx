@@ -61,10 +61,10 @@ const App: React.FC = () => {
     const [isListening, setIsListening] = useState<boolean>(false); 
     const [response, setResponse] = useState<APIResponse | null>(null);
     const [emotion, setEmotion] = useState<string>("");
-    const url = "/api/v1/slm/TheraSol/chat/";
-    const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
-    const emotionURL = "/api/v1/slm/motionundle/chat/";
-    const emotionAPIKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
+    const url = "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/";
+    const apiKey = "https://api.assisterr.ai/oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
+    const emotionURL = "https://api.assisterr.ai/api/v1/slm/motionundle/chat/";
+    const emotionAPIKey = "https://api.assisterr.ai/oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
 
     useEffect(() => {
         if (publicKey) {
