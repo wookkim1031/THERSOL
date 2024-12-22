@@ -3,6 +3,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, clusterApiUrl } from "@solana/web3.js";
 import "./App.css";
+import { NOTIMP } from "dns";
 
 
 const network = clusterApiUrl("devnet");
@@ -136,13 +137,15 @@ const App: React.FC = () => {
         const sendRequest = async () => {
             if (transcript) {
                 try {
-                    const conversationContext = 
-                    "Conversation until now: " + 
-                    conversationHistory.join(" ") + 
-                    ". If a previous conversation exists, answer the question based on the knowledge of the previous answers: " + 
-                    transcript;
-                    console.log(conversationContext)
-
+                    const conversationContext =
+                        "Conversation until now: " +
+                        conversationHistory.join(" ") +
+                        ". If a previous conversation exists, answer the question based on the knowledge of the previous answers: " +
+                        transcript;
+    
+                    console.log("Conversation Context:", conversationContext);
+    
+                    // Send main API request for response
                     const response = await fetch(url, {
                         method: "POST",
                         headers: {
@@ -151,28 +154,17 @@ const App: React.FC = () => {
                         },
                         body: JSON.stringify({ query: conversationContext }),
                     });
-
+    
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
                     }
-
-                    const data = await response.json();
-                    setResponse(data)
-                    setConversationHistory((prevHistory) => [...prevHistory, data.message]); 
-                } catch (error) {
-                    console.error("Error sending request:", error);
-                }
-            }
-        };
-
-        sendRequest();
-    }, [transcript, conversationHistory]);
-
-    useEffect(() => {
-        const sendEmotionRequest = async () => {
-            if (transcript) {
-                try {
-                    const response = await fetch(emotionURL, {
+    
+                    const responseData = await response.json();
+                    setResponse(responseData);
+                    setConversationHistory((prevHistory) => [...prevHistory, responseData.message]);
+    
+                    // emotion Detection 
+                    const emotionResponse = await fetch(emotionURL, {
                         method: "POST",
                         headers: {
                             "X-Api-Key": emotionAPIKey,
@@ -180,22 +172,23 @@ const App: React.FC = () => {
                         },
                         body: JSON.stringify({ query: transcript }),
                     });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
+    
+                    if (!emotionResponse.ok) {
+                        throw new Error(`HTTP error! Status: ${emotionResponse.status}`);
                     }
-
-                    const data = await response.json();
-                    setEmotion(data.message);
+    
+                    const emotionData = await emotionResponse.json();
+                    setEmotion(emotionData.message);
+                    console.log(emotionData.message);
+    
                 } catch (error) {
-                    console.error("Error sending request:", error);
+                    console.error("Error in sendRequest:", error);
                 }
             }
         };
-
-        sendEmotionRequest();
+    
+        sendRequest();
     }, [transcript]);
-
     const toggleListening = () => {
         setIsListening(!isListening);
     };
@@ -220,7 +213,7 @@ const App: React.FC = () => {
                     </button>
                     <p id="output">You said: {transcript}</p>
                     <p className="response">Response: {response?.message}</p>
-                    <p>Emotion: {emotion}</p>
+
                     <ul>
                         {conversationHistory.map((entry, index) => (
                             <li key={index}>
