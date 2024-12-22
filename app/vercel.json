@@ -14,6 +14,10 @@
         {
           "source": "/api/v1/slm/TheraSol/chat/",
           "destination": "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/"
+        },
+        {
+          "source": "/api/v1/slm/motionundle/chat/",
+          "destination": "https://api.assisterr.ai/api/v1/slm/motionundle/chat/"
         }
       ]
   }
