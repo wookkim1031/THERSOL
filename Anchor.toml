@@ -11,7 +11,7 @@ thera_sol = "AoRNpekD8CuunokmyWvqNyXqW8PProGtQK4WFPgq8DRh"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
