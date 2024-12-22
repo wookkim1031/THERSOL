@@ -103,9 +103,14 @@ const App: React.FC = () => {
             setIsListening(false);
         };
 
-        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-            console.error("Speech recognition error:", event.error);
-        };
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            if (event.error === 'aborted') {
+              console.warn('Speech recognition aborted.');
+            } else {
+              console.error('Unhandled error:', event.error);
+            }
+          };
 
         if (isListening) {
             recognition.start();
@@ -146,7 +151,7 @@ const App: React.FC = () => {
                     console.log("Conversation Context:", conversationContext);
     
                     // Send main API request for response
-                    const response = await fetch("https://api.assisterr.ai/api/v1/slm/TheraSol/chat/", {
+                    const response = await fetch("/api/v1/slm/TheraSol/chat/", {
                         method: "POST",
                         headers: {
                             "X-Api-Key": apiKey,
@@ -164,7 +169,7 @@ const App: React.FC = () => {
                     setConversationHistory((prevHistory) => [...prevHistory, responseData.message]);
     
                     // emotion Detection 
-                    const emotionResponse = await fetch("https://api.assisterr.ai/api/v1/slm/motionundle/chat", {
+                    const emotionResponse = await fetch("/api/v1/slm/motionundle/chat", {
                         method: "POST",
                         headers: {
                             "X-Api-Key": emotionAPIKey,
