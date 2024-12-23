@@ -74,6 +74,7 @@ const App: React.FC = () => {
     const [networkMismatch, setNetworkMismatch] = useState(false);
     const [sessionStarted, setSessionStarted] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
+    const [theraSolBalance, setTheraSolBalance] = useState<number | null>(null);
     const url = "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/";
     const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
     const emotionURL = "https://api.assisterr.ai/api/v1/slm/motionundle/chat/";
@@ -131,16 +132,20 @@ const App: React.FC = () => {
         const checkIfInitialized = async () => {
             if (!publicKey) {
                 setIsInitialized(false);
+                setTheraSolBalance(null);
                 return;
             }
 
             try {
                 const userPDA = await getUserPDA(publicKey);
-                const account = await program.account.userAccount.fetch(userPDA);
+                const userAccount = await program.account.userAccount.fetch(userPDA);
                 setIsInitialized(true);
+                // Convert from lamports to SOL
+                setTheraSolBalance(userAccount.balance.toNumber() / anchor.web3.LAMPORTS_PER_SOL);
             } catch (error) {
                 console.log("Account not initialized yet:", error);
                 setIsInitialized(false);
+                setTheraSolBalance(null);
             }
         };
 
@@ -483,6 +488,7 @@ const App: React.FC = () => {
                 </div>
                 {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
                 {publicKey && <p>{balance !== null ? `Main Balance: ${balance} SOL` : ""}</p>}
+                {publicKey && isInitialized && <p>{theraSolBalance !== null ? `TheraSol Balance: ${theraSolBalance} SOL` : ""}</p>}
                 {publicKey && !networkMismatch && !sessionStarted && (
                     <div className="session-controls">
                         {!isInitialized && (
