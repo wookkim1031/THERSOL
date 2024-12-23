@@ -73,6 +73,7 @@ const App: React.FC = () => {
     const [walletNetwork, setWalletNetwork] = useState<string>("");
     const [networkMismatch, setNetworkMismatch] = useState(false);
     const [sessionStarted, setSessionStarted] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
     const url = "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/";
     const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
     const emotionURL = "https://api.assisterr.ai/api/v1/slm/motionundle/chat/";
@@ -124,6 +125,26 @@ const App: React.FC = () => {
             };
             fetchBalance();
         }
+    }, [publicKey]);
+
+    useEffect(() => {
+        const checkIfInitialized = async () => {
+            if (!publicKey) {
+                setIsInitialized(false);
+                return;
+            }
+
+            try {
+                const userPDA = await getUserPDA(publicKey);
+                const account = await program.account.userAccount.fetch(userPDA);
+                setIsInitialized(true);
+            } catch (error) {
+                console.log("Account not initialized yet:", error);
+                setIsInitialized(false);
+            }
+        };
+
+        checkIfInitialized();
     }, [publicKey]);
 
     const Emotions = [
@@ -369,11 +390,61 @@ const App: React.FC = () => {
             const userPDA = await getUserPDA(publicKey);
             const endTime = Math.floor(Date.now() / 1000);
 
+            console.log("Creating transaction with:", {
+                publicKey: publicKey?.toString(),
+                userPDA: userPDA.toString(),
+                endTime
+            });
+
             const transaction = await program.methods
                 .endSession(new anchor.BN(endTime))
                 .accounts({
                     user: publicKey,
                     userAccount: userPDA,
+                })
+                .transaction();
+
+            console.log("Transaction created, preparing to send");
+
+            try {
+                const transactionSignature = await sendTransaction(
+                    transaction,
+                    connection,
+                    { skipPreflight: false }  // Enable preflight checks
+                );
+
+                console.log("Transaction sent with signature:", transactionSignature);
+
+                const confirmation = await connection.confirmTransaction(transactionSignature, "confirmed");
+                console.log("Transaction confirmation:", confirmation);
+
+                setSessionStarted(false);
+                console.log("Session ended successfully at:", endTime);
+            } catch (sendError) {
+                console.error("Transaction send error details:", {
+                    error: sendError
+                });
+                throw sendError;
+            }
+        } catch (error) {
+            console.error("Error ending session:", error);
+
+            // Handle the error appropriately
+        }
+    };
+
+    const initializeAccount = async () => {
+        if (!publicKey) return;
+
+        try {
+            const userPDA = await getUserPDA(publicKey);
+
+            const transaction = await program.methods
+                .initializeUser()
+                .accounts({
+                    user: publicKey,
+                    userAccount: userPDA,
+                    systemProgram: anchor.web3.SystemProgram.programId,
                 })
                 .transaction();
 
@@ -383,10 +454,10 @@ const App: React.FC = () => {
             );
 
             await connection.confirmTransaction(transactionSignature, "confirmed");
-            setSessionStarted(false);
-            console.log("Session ended successfully at:", endTime);
+            setIsInitialized(true);
+            console.log("Account initialized successfully");
         } catch (error) {
-            console.error("Error ending session:", error);
+            console.error("Error initializing account:", error);
             // Handle the error appropriately
         }
     };
@@ -411,14 +482,18 @@ const App: React.FC = () => {
                     />
                 </div>
                 {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
-                {publicKey && <p>{balance !== null ? `Balance: ${balance} SOL` : ""}</p>}
+                {publicKey && <p>{balance !== null ? `Main Balance: ${balance} SOL` : ""}</p>}
                 {publicKey && !networkMismatch && !sessionStarted && (
-                    <button
-                        className="start-session-button"
-                        onClick={startTheSession}
-                    >
-                        Start Session
-                    </button>
+                    <div className="session-controls">
+                        {!isInitialized && (
+                            <button onClick={initializeAccount} className="action-button">
+                                Initialize Account
+                            </button>
+                        )}
+                        <button onClick={startTheSession} className="action-button" disabled={!isInitialized}>
+                            Start Session
+                        </button>
+                    </div>
                 )}
                 {publicKey && !networkMismatch && sessionStarted && (
                     <button
