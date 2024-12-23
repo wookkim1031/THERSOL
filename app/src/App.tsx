@@ -338,10 +338,10 @@ const App: React.FC = () => {
     return (
         <div id="root-container">
             <div className="header">
-                <h1>Welcome to THERASOL</h1>
+                <h1>Welcome to TheraSol</h1>
             </div>
             <p>Currently supported on Chrome</p>
-            <h2>Connect to a Wallet</h2>
+            {!publicKey && <h2>Connect to a Wallet</h2>}
             <div className="wallet-connect-card">
                 <div className={`wallet-button-wrapper ${
                         publicKey ? "connected" : isConnecting ? "" : "connecting"
@@ -355,7 +355,7 @@ const App: React.FC = () => {
                     />
                 </div>
                 {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
-                <p>{balance !== null ? `Balance: ${balance} SOL` : ""}</p>
+                {publicKey && <p>{balance !== null ? `Balance: ${balance} SOL` : ""}</p>}
                 <div className="network-info">
                     <p>App Network: {network.includes("devnet") ? "Devnet" :
                                    network.includes("mainnet") ? "Mainnet" :
@@ -369,54 +369,66 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            <div className="main-content">
-                <h1>Speech to Text and Suggestions</h1>
-                {transcript ? (<button onClick={toggleListening} disabled={!publicKey}>
-                    {isListening ? "Stop Talking" : "Start Talking"}
-                            </button>
-                ): (<button onClick={toggleListening} disabled={!publicKey}>
-                    {isListening ? "Stop Talking" : "Continue Talking"}
-                </button>)
-                }
+            {publicKey && !networkMismatch && (
+                <div className="main-content">
+                    <h1>Speech to Text and Suggestions</h1>
 
-                {isListening && <div className="loading"></div>}
+                    {isListening && <div className="loading"></div>}
 
-                <p id="output">User: {transcript}</p>
-                <p className="response">{response?.message && `Response: ${response.message}`}</p>
+                    <p id="output">User: {transcript}</p>
+                    <p className="response">{response?.message && `Response: ${response.message}`}</p>
 
-                <ul>
-                    {conversationHistory.map((entry, index) => (
-                        <li
-                        key={index}
-                        style={{
-                            color: index % 2 === 0 ? "#007bff" : "#28a745",
-                            fontWeight: index % 2 === 0 ? "bold" : "normal",
-                        }}
-                        >
-                            {index % 2 === 0 ? "User: " : "TheraSol: "} {entry}
-                        </li>
-                    ))}
-                </ul>
-
-                {emotion && (
-                    <div className="emotion-list">
-                        {emotion.map(([key, value]) => (
-                            <div key={key} className="emotion-item">
-                                <span className="emotion-key">{key}</span>: <span className="emotion-value">{value}</span>
-                            </div>
+                    <ul>
+                        {conversationHistory.map((entry, index) => (
+                            <li
+                            key={index}
+                            style={{
+                                color: index % 2 === 0 ? "#007bff" : "#28a745",
+                                fontWeight: index % 2 === 0 ? "bold" : "normal",
+                            }}
+                            >
+                                {index % 2 === 0 ? "User: " : "TheraSol: "} {entry}
+                            </li>
                         ))}
-                    </div>
-                )}
+                    </ul>
 
-                {emotion && (
-                    <button onClick={giveSuggestion} disabled={isListening}>
-                        Finalize and Get Suggestion <br />
-                        Costs: 0.001 SOL + Gas: 0.00003 SOL
+                    {emotion && (
+                        <div className="emotion-list">
+                            {emotion.map(([key, value]) => (
+                                <div key={key} className="emotion-item">
+                                    <span className="emotion-key">{key}</span>: <span className="emotion-value">{value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {emotion && (
+                        <button onClick={giveSuggestion} disabled={isListening}>
+                            Finalize and Get Suggestion <br />
+                            Costs: 0.001 SOL + Gas: 0.00003 SOL
+                        </button>
+                    )}
+                    {finalResponse && <div className="loading"></div>}
+                    {finalResponse && <div className="response">{finalResponse.message}</div>}
+
+                    <button 
+                        onClick={toggleListening} 
+                        disabled={!publicKey} 
+                        className={`talk-button ${isListening ? 'listening' : ''}`}
+                        title={isListening ? "Stop Recording" : "Start Recording"}
+                    >
+                        <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            viewBox="0 0 24 24" 
+                            fill="currentColor" 
+                            className="mic-icon"
+                        >
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                        </svg>
                     </button>
-                )}
-                {finalResponse && <div className="loading"></div>}
-                {finalResponse && <div className="response">{finalResponse.message}</div>}
-            </div>
+                </div>
+            )}
         </div>
     );
 };
