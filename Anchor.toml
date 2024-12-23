@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-thera_sol = "AoRNpekD8CuunokmyWvqNyXqW8PProGtQK4WFPgq8DRh"
+thera_sol = "9TvEeaFS2aJLMaheLvwvZyhfksFN4khTaxeEctzZhqnW"
 
 [registry]
 url = "https://api.apr.dev"
