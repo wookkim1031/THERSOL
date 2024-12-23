@@ -73,6 +73,7 @@ const App: React.FC = () => {
     const [isConnecting, setIsConnecting] = useState(false);
     const [walletNetwork, setWalletNetwork] = useState<string>("");
     const [networkMismatch, setNetworkMismatch] = useState(false);
+    const [sessionStarted, setSessionStarted] = useState(false);
     const url = "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/";
     const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
     const emotionURL = "https://api.assisterr.ai/api/v1/slm/motionundle/chat/";
@@ -356,6 +357,14 @@ const App: React.FC = () => {
                 </div>
                 {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
                 {publicKey && <p>{balance !== null ? `Balance: ${balance} SOL` : ""}</p>}
+                {publicKey && !networkMismatch && !sessionStarted && (
+                    <button 
+                        className="start-session-button"
+                        onClick={() => setSessionStarted(true)}
+                    >
+                        Start Session
+                    </button>
+                )}
                 <div className="network-info">
                     <p>App Network: {network.includes("devnet") ? "Devnet" :
                                    network.includes("mainnet") ? "Mainnet" :
@@ -369,7 +378,7 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            {publicKey && !networkMismatch && (
+            {publicKey && !networkMismatch && sessionStarted && (
                 <div className="main-content">
                     <h1>Speech to Text and Suggestions</h1>
 
