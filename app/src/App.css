@@ -143,31 +143,65 @@ button:hover:not(:disabled) {
 
 /* Talk Button */
 .talk-button {
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  padding: 1rem 2rem;
-  font-size: 1.1rem;
-  width: 100%;
-  max-width: 300px;
-  border-radius: 8px;
-  background-color: #4CAF50;
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: #512da8;
   color: white;
   border: none;
   cursor: pointer;
-  transition: background-color 0.3s ease;
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .talk-button:hover {
-  background-color: #45a049;
+  background-color: #4527a0;
+  transform: translateX(-50%) scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
 }
 
 .talk-button:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
+  transform: translateX(-50%) scale(1);
+  box-shadow: none;
+}
+
+.mic-icon {
+  width: 40px;
+  height: 40px;
+  transition: all 0.3s ease;
+}
+
+.talk-button.listening {
+  background-color: #7c4dff;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.talk-button.listening:hover {
+  background-color: #651fff;
+}
+
+@keyframes pulse {
+  0% {
+    transform: translateX(-50%) scale(1);
+    box-shadow: 0 4px 8px rgba(124, 77, 255, 0.2);
+  }
+  50% {
+    transform: translateX(-50%) scale(1.05);
+    box-shadow: 0 6px 12px rgba(124, 77, 255, 0.4);
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+    box-shadow: 0 4px 8px rgba(124, 77, 255, 0.2);
+  }
 }
 
 /* Loading Spinner */
