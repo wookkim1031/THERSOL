@@ -580,7 +580,7 @@ const App: React.FC = () => {
             <div className="header">
                 <h1>Welcome to TheraSol</h1>
             </div>
-            <p>Currently supported on Chrome</p>
+            <p>Currently supported on Chrome Version >130</p>
             {!publicKey && <h2>Connect to a Wallet</h2>}
             <div className="wallet-connect-card">
                 <div className={`wallet-button-wrapper ${
