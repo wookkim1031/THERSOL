@@ -3,6 +3,7 @@ import { Program } from "@coral-xyz/anchor";
 import { TheraSol } from "../target/types/thera_sol";
 import { PublicKey, LAMPORTS_PER_SOL, Keypair, Transaction, SystemProgram } from "@solana/web3.js";
 import { expect } from 'chai';
+import { airdropIfRequired } from "@solana-developers/helpers";
 
 describe("thera-sol-devnet", () => {
   // Configure the client to use devnet
@@ -23,6 +24,9 @@ describe("thera-sol-devnet", () => {
 
   // Helper function to fund an account
   const fundAccount = async (address: PublicKey, amount: number) => {
+    // First ensure the provider wallet has enough SOL
+    await airdropIfRequired(provider, provider.wallet.publicKey, 2 * LAMPORTS_PER_SOL);
+    
     const balance = await provider.connection.getBalance(address);
     const minBalance = 0.05 * LAMPORTS_PER_SOL; // 0.05 SOL minimum balance
 
