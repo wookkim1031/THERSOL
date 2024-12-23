@@ -397,11 +397,15 @@ const App: React.FC = () => {
             );
 
             await connection.confirmTransaction(transactionSignature, "confirmed");
+
+            // Refresh balances after successful start session
+            await refreshBalances();
+
             setSessionStarted(true);
             console.log("Session started successfully at:", startTime);
         } catch (error) {
             console.error("Error starting session:", error);
-            // Handle the error appropriately
+            alert("Failed to start session. Please try again.");
         }
     };
 
@@ -441,14 +445,14 @@ const App: React.FC = () => {
 
             // Refresh balances after successful end session
             await refreshBalances();
-            
+
             // Reset session state
             setSessionStarted(false);
             setTranscript("");
             setResponse(null);
             setConversationHistory([]);
             setEmotion(null);
-            
+
             console.log("Session ended successfully at:", endTime);
         } catch (error) {
             console.error("Error ending session:", error);
