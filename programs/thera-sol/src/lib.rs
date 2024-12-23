@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("AoRNpekD8CuunokmyWvqNyXqW8PProGtQK4WFPgq8DRh");
+declare_id!("9TvEeaFS2aJLMaheLvwvZyhfksFN4khTaxeEctzZhqnW");
 
 // Constants
 pub const RATE_PER_MINUTE: u64 = 100_000; // 0.0001 SOL per minute
