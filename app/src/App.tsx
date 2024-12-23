@@ -703,6 +703,7 @@ const App: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Finalize and Get Suggestion button temporarily disabled
                     {emotion && (
                         <button onClick={giveSuggestion} disabled={isListening}>
                             Finalize and Get Suggestion <br />
@@ -711,6 +712,7 @@ const App: React.FC = () => {
                     )}
                     {finalResponse && <div className="loading"></div>}
                     {finalResponse && <div className="response">{finalResponse.message}</div>}
+                    */}
 
                     <button
                         onClick={toggleListening}
