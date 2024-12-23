@@ -428,30 +428,31 @@ const App: React.FC = () => {
 
             console.log("Transaction created, preparing to send");
 
-            try {
-                const transactionSignature = await sendTransaction(
-                    transaction,
-                    connection,
-                    { skipPreflight: false }  // Enable preflight checks
-                );
+            const transactionSignature = await sendTransaction(
+                transaction,
+                connection,
+                { skipPreflight: false }  // Enable preflight checks
+            );
 
-                console.log("Transaction sent with signature:", transactionSignature);
+            console.log("Transaction sent with signature:", transactionSignature);
 
-                const confirmation = await connection.confirmTransaction(transactionSignature, "confirmed");
-                console.log("Transaction confirmation:", confirmation);
+            const confirmation = await connection.confirmTransaction(transactionSignature, "confirmed");
+            console.log("Transaction confirmation:", confirmation);
 
-                setSessionStarted(false);
-                console.log("Session ended successfully at:", endTime);
-            } catch (sendError) {
-                console.error("Transaction send error details:", {
-                    error: sendError
-                });
-                throw sendError;
-            }
+            // Refresh balances after successful end session
+            await refreshBalances();
+            
+            // Reset session state
+            setSessionStarted(false);
+            setTranscript("");
+            setResponse(null);
+            setConversationHistory([]);
+            setEmotion(null);
+            
+            console.log("Session ended successfully at:", endTime);
         } catch (error) {
             console.error("Error ending session:", error);
-
-            // Handle the error appropriately
+            alert("Failed to end session. Please try again.");
         }
     };
 
