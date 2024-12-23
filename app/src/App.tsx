@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { Connection, clusterApiUrl, Transaction, SystemProgram, PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
+import * as anchor from "@coral-xyz/anchor";
+import { connection, getUserPDA, program } from "./anchor/setup";
 import "./App.css";
 import "@solana/wallet-adapter-react-ui/styles.css";
-
-const network = clusterApiUrl("devnet");
-const connection = new Connection(network, "confirmed");
 
 interface SpeechRecognition extends EventTarget {
     lang: string;
@@ -82,13 +81,13 @@ const App: React.FC = () => {
     const paymentAmount = 0.001 * Math.pow(10, 9);
 
     useEffect(() => {
-        console.log('Current network:', network);
+        console.log('Current network:', connection.rpcEndpoint);
     }, []);
 
     useEffect(() => {
         if (publicKey) {
             console.log('Wallet network:', connection.rpcEndpoint);
-            console.log('App network:', network);
+            console.log('App network:', connection.rpcEndpoint);
 
             // Detect wallet network
             const endpoint = connection.rpcEndpoint.toLowerCase();
@@ -106,7 +105,7 @@ const App: React.FC = () => {
 
             // Check for network mismatch
             const walletIsDevnet = endpoint.includes('devnet');
-            const appIsDevnet = network.includes('devnet');
+            const appIsDevnet = connection.rpcEndpoint.includes('devnet');
 
             setNetworkMismatch(walletIsDevnet !== appIsDevnet);
             if (walletIsDevnet !== appIsDevnet) {
@@ -279,14 +278,13 @@ const App: React.FC = () => {
         }
 
         try {
-            const transaction = new Transaction().add(
-                SystemProgram.transfer({
+            const transaction = new anchor.web3.Transaction().add(
+                anchor.web3.SystemProgram.transfer({
                     fromPubkey: publicKey,
                     toPubkey: myPublicKey,
                     lamports: paymentAmount,
                 })
             );
-            const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
             const signature = await sendTransaction(transaction, connection);
             await connection.confirmTransaction(signature, "confirmed");
             alert("Payment successful! You can now request a suggestion.");
@@ -335,6 +333,51 @@ const App: React.FC = () => {
         }
     };
 
+    const startTheSession = async () => {
+        if (!publicKey) return;
+
+        try {
+            const userPDA = await getUserPDA(publicKey);
+            const startTime = Math.floor(Date.now() / 1000);
+
+            await program.methods
+                .startSession(new anchor.BN(startTime))
+                .accounts({
+                    user: publicKey,
+                    userAccount: userPDA,
+                })
+                .rpc();
+
+            setSessionStarted(true);
+            console.log("Session started successfully at:", startTime);
+        } catch (error) {
+            console.error("Error starting session:", error);
+            // Handle the error appropriately
+        }
+    };
+
+    const endTheSession = async () => {
+        if (!publicKey) return;
+
+        try {
+            const userPDA = await getUserPDA(publicKey);
+            const endTime = Math.floor(Date.now() / 1000);
+
+            await program.methods
+                .endSession(new anchor.BN(endTime))
+                .accounts({
+                    user: publicKey,
+                    userAccount: userPDA,
+                })
+                .rpc();
+
+            setSessionStarted(false);
+            console.log("Session ended successfully at:", endTime);
+        } catch (error) {
+            console.error("Error ending session:", error);
+            // Handle the error appropriately
+        }
+    };
 
     return (
         <div id="root-container">
@@ -358,30 +401,30 @@ const App: React.FC = () => {
                 {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
                 {publicKey && <p>{balance !== null ? `Balance: ${balance} SOL` : ""}</p>}
                 {publicKey && !networkMismatch && !sessionStarted && (
-                    <button 
+                    <button
                         className="start-session-button"
-                        onClick={() => setSessionStarted(true)}
+                        onClick={startTheSession}
                     >
                         Start Session
                     </button>
                 )}
                 {publicKey && !networkMismatch && sessionStarted && (
-                    <button 
+                    <button
                         className="end-session-button"
-                        onClick={() => setSessionStarted(false)}
+                        onClick={endTheSession}
                     >
                         End Session
                     </button>
                 )}
                 <div className="network-info">
-                    <p>App Network: {network.includes("devnet") ? "Devnet" :
-                                   network.includes("mainnet") ? "Mainnet" :
-                                   network}</p>
+                    <p>App Network: {connection.rpcEndpoint.includes("devnet") ? "Devnet" :
+                                   connection.rpcEndpoint.includes("mainnet") ? "Mainnet" :
+                                   connection.rpcEndpoint}</p>
                     <p>Wallet Network: {walletNetwork || "Not Connected"}</p>
                 </div>
                 {networkMismatch && (
                     <div className="network-warning">
-                        ⚠️ Warning: Please switch your wallet to {network.includes("devnet") ? "Devnet" : "Mainnet"} network
+                        ⚠️ Warning: Please switch your wallet to {connection.rpcEndpoint.includes("devnet") ? "Devnet" : "Mainnet"} network
                     </div>
                 )}
             </div>
@@ -428,16 +471,16 @@ const App: React.FC = () => {
                     {finalResponse && <div className="loading"></div>}
                     {finalResponse && <div className="response">{finalResponse.message}</div>}
 
-                    <button 
-                        onClick={toggleListening} 
-                        disabled={!publicKey} 
+                    <button
+                        onClick={toggleListening}
+                        disabled={!publicKey}
                         className={`talk-button ${isListening ? 'listening' : ''}`}
                         title={isListening ? "Stop Recording" : "Start Recording"}
                     >
-                        <svg 
-                            xmlns="http://www.w3.org/2000/svg" 
-                            viewBox="0 0 24 24" 
-                            fill="currentColor" 
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
                             className="mic-icon"
                         >
                             <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>

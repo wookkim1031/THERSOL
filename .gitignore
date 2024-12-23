@@ -1,6 +1,10 @@
 .anchor
 .DS_Store
 target
+!target/idl
+!target/idl/thera_sol.json
+!target/types
+!target/types/thera_sol.ts
 **/*.rs.bk
 node_modules
 test-ledger

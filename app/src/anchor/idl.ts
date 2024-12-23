@@ -1,0 +1,1 @@
+../../../target/types/thera_sol.ts

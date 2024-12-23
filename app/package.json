@@ -73,6 +73,7 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "ts-loader": "^9.5.1",
     "webpack-cli": "^6.0.0"
   }
 }
