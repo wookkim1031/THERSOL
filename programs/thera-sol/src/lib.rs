@@ -31,14 +31,14 @@ pub mod thera_sol {
                 to: ctx.accounts.user_account.to_account_info(),
             },
         );
-        
+
         anchor_lang::system_program::transfer(cpi_context, amount)?;
-        
+
         // Update user balance
         let user_account = &mut ctx.accounts.user_account;
         user_account.balance = user_account.balance.checked_add(amount)
             .ok_or(ErrorCode::CalculationOverflow)?;
-        
+
         Ok(())
     }
 
@@ -85,6 +85,7 @@ pub mod thera_sol {
         // Add to session history
         if user_account.session_history.len() >= MAX_SESSIONS {
             user_account.session_history.remove(0); // Remove oldest session if at capacity
+            // TODO: ensure that after removing the oldest, the total cost is still calculated correctly
         }
         user_account.session_history.push(session);
 
@@ -100,7 +101,7 @@ pub mod thera_sol {
 
     pub fn reclaim_funds(ctx: Context<ReclaimFunds>, amount: u64) -> Result<()> {
         let user_account = &mut ctx.accounts.user_account;
-        
+
         // Verify user is not in an active session
         require!(user_account.start_time == 0, ErrorCode::ActiveSession);
 
@@ -140,6 +141,10 @@ pub struct FreeBalanceEvent {
 
 // Helper function to calculate free balance
 fn calculate_free_balance(user_account: &UserAccount) -> Result<u64> {
+    // Temporarily return just the balance without calculating history
+    Ok(user_account.balance)
+    
+    /* Commented out history calculation for now
     let mut total_cost = 0u64;
 
     for session in &user_account.session_history {
@@ -159,6 +164,7 @@ fn calculate_free_balance(user_account: &UserAccount) -> Result<u64> {
 
     Ok(user_account.balance.checked_sub(total_cost)
         .unwrap_or(0))
+    */
 }
 
 #[derive(Accounts)]

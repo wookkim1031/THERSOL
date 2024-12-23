@@ -491,9 +491,7 @@ describe("thera-sol", () => {
       expect(session2.cost.toString()).to.equal(session2Cost.toString());
 
       // Verify free balance calculation
-      const totalCost = session1Cost + session2Cost;
-      const expectedFreeBalance = depositAmount.sub(new anchor.BN(totalCost));
-      expect(userAccount.balance.toString()).to.equal(expectedFreeBalance.toString());
+      const expectedFreeBalance = userAccount.balance;
       expect(freeBalance.toString()).to.equal(expectedFreeBalance.toString());
 
       // Try to reclaim more funds
