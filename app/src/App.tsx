@@ -484,13 +484,32 @@ const App: React.FC = () => {
         }
     };
 
+    const refreshBalances = async () => {
+        if (!publicKey) return;
+
+        try {
+            // Refresh main wallet balance
+            const mainBalance = await connection.getBalance(publicKey);
+            setBalance(mainBalance / anchor.web3.LAMPORTS_PER_SOL);
+
+            // Refresh TheraSol balance if initialized
+            if (isInitialized) {
+                const userPDA = await getUserPDA(publicKey);
+                const userAccount = await program.account.userAccount.fetch(userPDA) as UserAccount;
+                setTheraSolBalance(userAccount.balance.toNumber() / anchor.web3.LAMPORTS_PER_SOL);
+            }
+        } catch (error) {
+            console.error("Error refreshing balances:", error);
+        }
+    };
+
     const handleDeposit = async () => {
         if (!publicKey || depositAmount <= 0) return;
 
         try {
             const userPDA = await getUserPDA(publicKey);
             const lamports = depositAmount * anchor.web3.LAMPORTS_PER_SOL;
-            
+
             const transaction = await program.methods
                 .depositFunds(new anchor.BN(lamports))
                 .accounts({
@@ -507,11 +526,10 @@ const App: React.FC = () => {
 
             await connection.confirmTransaction(transactionSignature, "confirmed");
             console.log("Successfully deposited:", depositAmount, "SOL");
-            
-            // Refresh the balances
-            const userAccount = await program.account.userAccount.fetch(userPDA) as UserAccount;
-            setTheraSolBalance(userAccount.balance.toNumber() / anchor.web3.LAMPORTS_PER_SOL);
-            
+
+            // Refresh both balances
+            await refreshBalances();
+
             // Reset deposit amount
             setDepositAmount(0);
         } catch (error) {
@@ -525,7 +543,7 @@ const App: React.FC = () => {
         try {
             const userPDA = await getUserPDA(publicKey);
             const lamports = withdrawAmount * anchor.web3.LAMPORTS_PER_SOL;
-            
+
             const transaction = await program.methods
                 .reclaimFunds(new anchor.BN(lamports))
                 .accounts({
@@ -541,11 +559,10 @@ const App: React.FC = () => {
 
             await connection.confirmTransaction(transactionSignature, "confirmed");
             console.log("Successfully withdrawn:", withdrawAmount, "SOL");
-            
-            // Refresh the balances
-            const userAccount = await program.account.userAccount.fetch(userPDA) as UserAccount;
-            setTheraSolBalance(userAccount.balance.toNumber() / anchor.web3.LAMPORTS_PER_SOL);
-            
+
+            // Refresh both balances
+            await refreshBalances();
+
             // Reset withdraw amount
             setWithdrawAmount(0);
         } catch (error) {
@@ -594,8 +611,8 @@ const App: React.FC = () => {
                                         placeholder="Amount in SOL"
                                         className="deposit-input"
                                     />
-                                    <button 
-                                        onClick={handleDeposit} 
+                                    <button
+                                        onClick={handleDeposit}
                                         className="action-button"
                                         disabled={depositAmount <= 0}
                                     >
@@ -612,8 +629,8 @@ const App: React.FC = () => {
                                         placeholder="Amount in SOL"
                                         className="withdraw-input"
                                     />
-                                    <button 
-                                        onClick={handleWithdraw} 
+                                    <button
+                                        onClick={handleWithdraw}
                                         className="action-button"
                                         disabled={withdrawAmount <= 0 || (theraSolBalance !== null && withdrawAmount > theraSolBalance)}
                                     >
