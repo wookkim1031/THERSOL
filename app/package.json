@@ -4,6 +4,7 @@
   "private": true,
   "proxy": "https://api.assisterr.ai/",
   "dependencies": {
+    "@coral-xyz/anchor": "0.26.0",
     "@craco/craco": "^7.1.0",
     "@deepgram/sdk": "^3.9.0",
     "@emotion/react": "^11.14.0",
@@ -73,6 +74,7 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "ts-loader": "^9.5.1",
     "webpack-cli": "^6.0.0"
   }
 }

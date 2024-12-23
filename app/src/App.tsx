@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { Connection, clusterApiUrl, Transaction, SystemProgram, PublicKey } from "@solana/web3.js";
+import { useConnection, useWallet,  } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
+import * as anchor from "@coral-xyz/anchor";
+import { connection, getUserPDA, program } from "./anchor/setup";
 import "./App.css";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-const network = clusterApiUrl("devnet");
-const connection = new Connection(network, "confirmed");
-
+// Type definitions
 interface SpeechRecognition extends EventTarget {
     lang: string;
     interimResults: boolean;
@@ -60,6 +60,20 @@ interface Emotions {
     Disgust: number;
 }
 
+// User account type from the smart contract
+type UserAccount = {
+    owner: PublicKey;
+    balance: anchor.BN;
+    startTime: anchor.BN;
+    endTime: anchor.BN;
+    totalSessions: number;
+    sessionHistory: Array<{
+        startTime: anchor.BN;
+        endTime: anchor.BN;
+        cost: anchor.BN;
+    }>;
+};
+
 const App: React.FC = () => {
     const { publicKey, sendTransaction } = useWallet();
     const { connection } = useConnection();
@@ -73,6 +87,11 @@ const App: React.FC = () => {
     const [isConnecting, setIsConnecting] = useState(false);
     const [walletNetwork, setWalletNetwork] = useState<string>("");
     const [networkMismatch, setNetworkMismatch] = useState(false);
+    const [sessionStarted, setSessionStarted] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
+    const [theraSolBalance, setTheraSolBalance] = useState<number | null>(null);
+    const [depositAmount, setDepositAmount] = useState<number>(0);
+    const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
     const url = "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/";
     const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
     const emotionURL = "https://api.assisterr.ai/api/v1/slm/motionundle/chat/";
@@ -81,13 +100,13 @@ const App: React.FC = () => {
     const paymentAmount = 0.001 * Math.pow(10, 9);
 
     useEffect(() => {
-        console.log('Current network:', network);
+        console.log('Current network:', connection.rpcEndpoint);
     }, []);
 
     useEffect(() => {
         if (publicKey) {
             console.log('Wallet network:', connection.rpcEndpoint);
-            console.log('App network:', network);
+            console.log('App network:', connection.rpcEndpoint);
 
             // Detect wallet network
             const endpoint = connection.rpcEndpoint.toLowerCase();
@@ -105,7 +124,7 @@ const App: React.FC = () => {
 
             // Check for network mismatch
             const walletIsDevnet = endpoint.includes('devnet');
-            const appIsDevnet = network.includes('devnet');
+            const appIsDevnet = connection.rpcEndpoint.includes('devnet');
 
             setNetworkMismatch(walletIsDevnet !== appIsDevnet);
             if (walletIsDevnet !== appIsDevnet) {
@@ -124,6 +143,30 @@ const App: React.FC = () => {
             };
             fetchBalance();
         }
+    }, [publicKey]);
+
+    useEffect(() => {
+        const checkIfInitialized = async () => {
+            if (!publicKey) {
+                setIsInitialized(false);
+                setTheraSolBalance(null);
+                return;
+            }
+
+            try {
+                const userPDA = await getUserPDA(publicKey);
+                const userAccount = await program.account.userAccount.fetch(userPDA);
+                setIsInitialized(true);
+                // Convert from lamports to SOL
+                setTheraSolBalance(userAccount.balance.toNumber() / anchor.web3.LAMPORTS_PER_SOL);
+            } catch (error) {
+                console.log("Account not initialized yet:", error);
+                setIsInitialized(false);
+                setTheraSolBalance(null);
+            }
+        };
+
+        checkIfInitialized();
     }, [publicKey]);
 
     const Emotions = [
@@ -278,14 +321,13 @@ const App: React.FC = () => {
         }
 
         try {
-            const transaction = new Transaction().add(
-                SystemProgram.transfer({
+            const transaction = new anchor.web3.Transaction().add(
+                anchor.web3.SystemProgram.transfer({
                     fromPubkey: publicKey,
                     toPubkey: myPublicKey,
                     lamports: paymentAmount,
                 })
             );
-            const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
             const signature = await sendTransaction(transaction, connection);
             await connection.confirmTransaction(signature, "confirmed");
             alert("Payment successful! You can now request a suggestion.");
@@ -334,6 +376,204 @@ const App: React.FC = () => {
         }
     };
 
+    const startTheSession = async () => {
+        if (!publicKey) return;
+
+        try {
+            const userPDA = await getUserPDA(publicKey);
+            const startTime = Math.floor(Date.now() / 1000);
+
+            const transaction = await program.methods
+                .startSession(new anchor.BN(startTime))
+                .accounts({
+                    user: publicKey,
+                    userAccount: userPDA,
+                })
+                .transaction();
+
+            const transactionSignature = await sendTransaction(
+                transaction,
+                connection
+            );
+
+            await connection.confirmTransaction(transactionSignature, "confirmed");
+
+            // Refresh balances after successful start session
+            await refreshBalances();
+
+            setSessionStarted(true);
+            console.log("Session started successfully at:", startTime);
+        } catch (error) {
+            console.error("Error starting session:", error);
+            alert("Failed to start session. Please try again.");
+        }
+    };
+
+    const endTheSession = async () => {
+        if (!publicKey) return;
+
+        try {
+            const userPDA = await getUserPDA(publicKey);
+            const endTime = Math.floor(Date.now() / 1000);
+
+            console.log("Creating transaction with:", {
+                publicKey: publicKey?.toString(),
+                userPDA: userPDA.toString(),
+                endTime
+            });
+
+            const transaction = await program.methods
+                .endSession(new anchor.BN(endTime))
+                .accounts({
+                    user: publicKey,
+                    userAccount: userPDA,
+                })
+                .transaction();
+
+            console.log("Transaction created, preparing to send");
+
+            const transactionSignature = await sendTransaction(
+                transaction,
+                connection,
+                { skipPreflight: false }  // Enable preflight checks
+            );
+
+            console.log("Transaction sent with signature:", transactionSignature);
+
+            const confirmation = await connection.confirmTransaction(transactionSignature, "confirmed");
+            console.log("Transaction confirmation:", confirmation);
+
+            // Refresh balances after successful end session
+            await refreshBalances();
+
+            // Reset session state
+            setSessionStarted(false);
+            setTranscript("");
+            setResponse(null);
+            setConversationHistory([]);
+            setEmotion(null);
+
+            console.log("Session ended successfully at:", endTime);
+        } catch (error) {
+            console.error("Error ending session:", error);
+            alert("Failed to end session. Please try again.");
+        }
+    };
+
+    const initializeAccount = async () => {
+        if (!publicKey) return;
+
+        try {
+            const userPDA = await getUserPDA(publicKey);
+
+            const transaction = await program.methods
+                .initializeUser()
+                .accounts({
+                    user: publicKey,
+                    userAccount: userPDA,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                })
+                .transaction();
+
+            const transactionSignature = await sendTransaction(
+                transaction,
+                connection
+            );
+
+            await connection.confirmTransaction(transactionSignature, "confirmed");
+            setIsInitialized(true);
+            console.log("Account initialized successfully");
+        } catch (error) {
+            console.error("Error initializing account:", error);
+            // Handle the error appropriately
+        }
+    };
+
+    const refreshBalances = async () => {
+        if (!publicKey) return;
+
+        try {
+            // Refresh main wallet balance
+            const mainBalance = await connection.getBalance(publicKey);
+            setBalance(mainBalance / anchor.web3.LAMPORTS_PER_SOL);
+
+            // Refresh TheraSol balance if initialized
+            if (isInitialized) {
+                const userPDA = await getUserPDA(publicKey);
+                const userAccount = await program.account.userAccount.fetch(userPDA) as UserAccount;
+                setTheraSolBalance(userAccount.balance.toNumber() / anchor.web3.LAMPORTS_PER_SOL);
+            }
+        } catch (error) {
+            console.error("Error refreshing balances:", error);
+        }
+    };
+
+    const handleDeposit = async () => {
+        if (!publicKey || depositAmount <= 0) return;
+
+        try {
+            const userPDA = await getUserPDA(publicKey);
+            const lamports = depositAmount * anchor.web3.LAMPORTS_PER_SOL;
+
+            const transaction = await program.methods
+                .depositFunds(new anchor.BN(lamports))
+                .accounts({
+                    user: publicKey,
+                    userAccount: userPDA,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                })
+                .transaction();
+
+            const transactionSignature = await sendTransaction(
+                transaction,
+                connection
+            );
+
+            await connection.confirmTransaction(transactionSignature, "confirmed");
+            console.log("Successfully deposited:", depositAmount, "SOL");
+
+            // Refresh both balances
+            await refreshBalances();
+
+            // Reset deposit amount
+            setDepositAmount(0);
+        } catch (error) {
+            console.error("Error depositing funds:", error);
+        }
+    };
+
+    const handleWithdraw = async () => {
+        if (!publicKey || withdrawAmount <= 0) return;
+
+        try {
+            const userPDA = await getUserPDA(publicKey);
+            const lamports = withdrawAmount * anchor.web3.LAMPORTS_PER_SOL;
+
+            const transaction = await program.methods
+                .reclaimFunds(new anchor.BN(lamports))
+                .accounts({
+                    user: publicKey,
+                    userAccount: userPDA,
+                })
+                .transaction();
+
+            const transactionSignature = await sendTransaction(
+                transaction,
+                connection
+            );
+
+            await connection.confirmTransaction(transactionSignature, "confirmed");
+            console.log("Successfully withdrawn:", withdrawAmount, "SOL");
+
+            // Refresh both balances
+            await refreshBalances();
+
+            // Reset withdraw amount
+            setWithdrawAmount(0);
+        } catch (error) {
+            console.error("Error withdrawing funds:", error);
+        }
+    };
 
     return (
         <div id="root-container">
@@ -355,21 +595,82 @@ const App: React.FC = () => {
                     />
                 </div>
                 {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
-                {publicKey && <p>{balance !== null ? `Balance: ${balance} SOL` : ""}</p>}
+                {publicKey && <p>{balance !== null ? `Main Balance: ${balance} SOL` : ""}</p>}
+                {publicKey && isInitialized && <p>{theraSolBalance !== null ? `TheraSol Wallet Balance: ${theraSolBalance} SOL` : ""}</p>}
+                {publicKey && !networkMismatch && !sessionStarted && (
+                    <div className="session-controls">
+                        {!isInitialized && (
+                            <button onClick={initializeAccount} className="action-button">
+                                Initialize Account
+                            </button>
+                        )}
+                        {isInitialized && (
+                            <div className="wallet-controls">
+                                <div className="deposit-controls">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.1"
+                                        value={depositAmount}
+                                        onChange={(e) => setDepositAmount(Number(e.target.value))}
+                                        placeholder="Amount in SOL"
+                                        className="deposit-input"
+                                    />
+                                    <button
+                                        onClick={handleDeposit}
+                                        className="action-button"
+                                        disabled={depositAmount <= 0}
+                                    >
+                                        Deposit to TheraSol Wallet
+                                    </button>
+                                </div>
+                                <div className="withdraw-controls">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.1"
+                                        value={withdrawAmount}
+                                        onChange={(e) => setWithdrawAmount(Number(e.target.value))}
+                                        placeholder="Amount in SOL"
+                                        className="withdraw-input"
+                                    />
+                                    <button
+                                        onClick={handleWithdraw}
+                                        className="action-button"
+                                        disabled={withdrawAmount <= 0 || (theraSolBalance !== null && withdrawAmount > theraSolBalance)}
+                                    >
+                                        Withdraw from TheraSol Wallet
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        <button onClick={startTheSession} className="action-button" disabled={!isInitialized}>
+                            Start Session
+                        </button>
+                    </div>
+                )}
+                {publicKey && !networkMismatch && sessionStarted && (
+                    <button
+                        className="end-session-button"
+                        onClick={endTheSession}
+                    >
+                        End Session
+                    </button>
+                )}
                 <div className="network-info">
-                    <p>App Network: {network.includes("devnet") ? "Devnet" :
-                                   network.includes("mainnet") ? "Mainnet" :
-                                   network}</p>
+                    <p>App Network: {connection.rpcEndpoint.includes("devnet") ? "Devnet" :
+                                   connection.rpcEndpoint.includes("mainnet") ? "Mainnet" :
+                                   connection.rpcEndpoint}</p>
                     <p>Wallet Network: {walletNetwork || "Not Connected"}</p>
                 </div>
                 {networkMismatch && (
                     <div className="network-warning">
-                        ⚠️ Warning: Please switch your wallet to {network.includes("devnet") ? "Devnet" : "Mainnet"} network
+                        ⚠️ Warning: Please switch your wallet to {connection.rpcEndpoint.includes("devnet") ? "Devnet" : "Mainnet"} network
                     </div>
                 )}
             </div>
 
-            {publicKey && !networkMismatch && (
+            {publicKey && !networkMismatch && sessionStarted && (
                 <div className="main-content">
                     <h1>Speech to Text and Suggestions</h1>
 
@@ -411,16 +712,16 @@ const App: React.FC = () => {
                     {finalResponse && <div className="loading"></div>}
                     {finalResponse && <div className="response">{finalResponse.message}</div>}
 
-                    <button 
-                        onClick={toggleListening} 
-                        disabled={!publicKey} 
+                    <button
+                        onClick={toggleListening}
+                        disabled={!publicKey}
                         className={`talk-button ${isListening ? 'listening' : ''}`}
                         title={isListening ? "Stop Recording" : "Start Recording"}
                     >
-                        <svg 
-                            xmlns="http://www.w3.org/2000/svg" 
-                            viewBox="0 0 24 24" 
-                            fill="currentColor" 
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
                             className="mic-icon"
                         >
                             <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>

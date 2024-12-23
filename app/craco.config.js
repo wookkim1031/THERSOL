@@ -22,6 +22,20 @@ module.exports = {
                 "fs": false
             };
 
+            // Configure TypeScript loader for generated files
+            webpackConfig.module.rules.push({
+                test: /\.ts$/,
+                include: [/target\/types/, /src\/anchor/],
+                use: [
+                    {
+                        loader: 'ts-loader',
+                        options: {
+                            transpileOnly: true,
+                        },
+                    },
+                ],
+            });
+
             return webpackConfig;
         }
     }
