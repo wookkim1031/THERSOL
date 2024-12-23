@@ -29,7 +29,17 @@ TheraSol bridges this gap by providing:
 - Professional-grade AI therapy
 - Blockchain-based trust and transparency
 
+### Why is it an AI agent?
 
+- Autonomous AI agent designed for independent operation
+- Manages operational costs through innovative means
+   - Future goal: autonomously pay for its own LLM and other costs using blockchain technology
+   - Current implementation: uses [Assisterr](https://assisterr.ai/) for LLM access
+- Utilizes smart contracts and DeFi protocols for transparent and secure financial transactions
+- Funds essential services such as hosting and speech models
+- Ensures seamless operations, continuous improvement, and adaptation without external funding
+
+## Technical Implementation
 
 ## 🔧 Technical Implementation
 
