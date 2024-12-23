@@ -7,6 +7,7 @@ import { connection, getUserPDA, program } from "./anchor/setup";
 import "./App.css";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
+// Type definitions
 interface SpeechRecognition extends EventTarget {
     lang: string;
     interimResults: boolean;
@@ -59,6 +60,20 @@ interface Emotions {
     Disgust: number;
 }
 
+// User account type from the smart contract
+type UserAccount = {
+    owner: PublicKey;
+    balance: anchor.BN;
+    startTime: anchor.BN;
+    endTime: anchor.BN;
+    totalSessions: number;
+    sessionHistory: Array<{
+        startTime: anchor.BN;
+        endTime: anchor.BN;
+        cost: anchor.BN;
+    }>;
+};
+
 const App: React.FC = () => {
     const { publicKey, sendTransaction } = useWallet();
     const { connection } = useConnection();
@@ -75,6 +90,7 @@ const App: React.FC = () => {
     const [sessionStarted, setSessionStarted] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const [theraSolBalance, setTheraSolBalance] = useState<number | null>(null);
+    const [depositAmount, setDepositAmount] = useState<number>(0);
     const url = "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/";
     const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
     const emotionURL = "https://api.assisterr.ai/api/v1/slm/motionundle/chat/";
@@ -467,6 +483,41 @@ const App: React.FC = () => {
         }
     };
 
+    const handleDeposit = async () => {
+        if (!publicKey || depositAmount <= 0) return;
+
+        try {
+            const userPDA = await getUserPDA(publicKey);
+            const lamports = depositAmount * anchor.web3.LAMPORTS_PER_SOL;
+            
+            const transaction = await program.methods
+                .depositFunds(new anchor.BN(lamports))
+                .accounts({
+                    user: publicKey,
+                    userAccount: userPDA,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                })
+                .transaction();
+
+            const transactionSignature = await sendTransaction(
+                transaction,
+                connection
+            );
+
+            await connection.confirmTransaction(transactionSignature, "confirmed");
+            console.log("Successfully deposited:", depositAmount, "SOL");
+            
+            // Refresh the balances
+            const userAccount = await program.account.userAccount.fetch(userPDA) as UserAccount;
+            setTheraSolBalance(userAccount.balance.toNumber() / anchor.web3.LAMPORTS_PER_SOL);
+            
+            // Reset deposit amount
+            setDepositAmount(0);
+        } catch (error) {
+            console.error("Error depositing funds:", error);
+        }
+    };
+
     return (
         <div id="root-container">
             <div className="header">
@@ -488,13 +539,33 @@ const App: React.FC = () => {
                 </div>
                 {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
                 {publicKey && <p>{balance !== null ? `Main Balance: ${balance} SOL` : ""}</p>}
-                {publicKey && isInitialized && <p>{theraSolBalance !== null ? `TheraSol Balance: ${theraSolBalance} SOL` : ""}</p>}
+                {publicKey && isInitialized && <p>{theraSolBalance !== null ? `TheraSol Wallet Balance: ${theraSolBalance} SOL` : ""}</p>}
                 {publicKey && !networkMismatch && !sessionStarted && (
                     <div className="session-controls">
                         {!isInitialized && (
                             <button onClick={initializeAccount} className="action-button">
                                 Initialize Account
                             </button>
+                        )}
+                        {isInitialized && (
+                            <div className="deposit-controls">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.1"
+                                    value={depositAmount}
+                                    onChange={(e) => setDepositAmount(Number(e.target.value))}
+                                    placeholder="Amount in SOL"
+                                    className="deposit-input"
+                                />
+                                <button 
+                                    onClick={handleDeposit} 
+                                    className="action-button"
+                                    disabled={depositAmount <= 0}
+                                >
+                                    Deposit to TheraSol Wallet
+                                </button>
+                            </div>
                         )}
                         <button onClick={startTheSession} className="action-button" disabled={!isInitialized}>
                             Start Session
