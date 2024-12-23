@@ -169,6 +169,17 @@ const App: React.FC = () => {
         checkIfInitialized();
     }, [publicKey]);
 
+    useEffect(() => {
+        if (sessionStarted) {
+            const initialMessage = "Hello! Welcome to TheraSol. How are you feeling today?";
+            setConversationHistory((prevHistory) => [...prevHistory, initialMessage]);
+
+            const speech = new SpeechSynthesisUtterance(initialMessage);
+            speech.lang = "en-GB";
+            window.speechSynthesis.speak(speech);
+        }
+    }, [sessionStarted]);
+
     const Emotions = [
         { name: "Joy", value: 0 },
         { name: "Sadness", value: 0 },
@@ -304,6 +315,7 @@ const App: React.FC = () => {
     }, [transcript]);
 
     const toggleListening = () => {
+        setSessionStarted(true);
         setIsListening(!isListening);
     };
 
