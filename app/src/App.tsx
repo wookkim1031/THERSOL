@@ -365,6 +365,14 @@ const App: React.FC = () => {
                         Start Session
                     </button>
                 )}
+                {publicKey && !networkMismatch && sessionStarted && (
+                    <button 
+                        className="end-session-button"
+                        onClick={() => setSessionStarted(false)}
+                    >
+                        End Session
+                    </button>
+                )}
                 <div className="network-info">
                     <p>App Network: {network.includes("devnet") ? "Devnet" :
                                    network.includes("mainnet") ? "Mainnet" :
