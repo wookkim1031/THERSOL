@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet,  } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import { connection, getUserPDA, program } from "./anchor/setup";
@@ -340,14 +340,20 @@ const App: React.FC = () => {
             const userPDA = await getUserPDA(publicKey);
             const startTime = Math.floor(Date.now() / 1000);
 
-            await program.methods
+            const transaction = await program.methods
                 .startSession(new anchor.BN(startTime))
                 .accounts({
                     user: publicKey,
                     userAccount: userPDA,
                 })
-                .rpc();
+                .transaction();
 
+            const transactionSignature = await sendTransaction(
+                transaction,
+                connection
+            );
+
+            await connection.confirmTransaction(transactionSignature, "confirmed");
             setSessionStarted(true);
             console.log("Session started successfully at:", startTime);
         } catch (error) {
@@ -363,14 +369,20 @@ const App: React.FC = () => {
             const userPDA = await getUserPDA(publicKey);
             const endTime = Math.floor(Date.now() / 1000);
 
-            await program.methods
+            const transaction = await program.methods
                 .endSession(new anchor.BN(endTime))
                 .accounts({
                     user: publicKey,
                     userAccount: userPDA,
                 })
-                .rpc();
+                .transaction();
 
+            const transactionSignature = await sendTransaction(
+                transaction,
+                connection
+            );
+
+            await connection.confirmTransaction(transactionSignature, "confirmed");
             setSessionStarted(false);
             console.log("Session ended successfully at:", endTime);
         } catch (error) {
