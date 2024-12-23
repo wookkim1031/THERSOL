@@ -355,7 +355,7 @@ const App: React.FC = () => {
                 <h1>Welcome to TheraSol</h1>
             </div>
             <p>Currently supported on Chrome</p>
-            <h2>Connect to a Wallet</h2>
+            {!publicKey && <h2>Connect to a Wallet</h2>}
             <div className="wallet-connect-card">
                 <div className={`wallet-button-wrapper ${
                         publicKey ? "connected" : isConnecting ? "" : "connecting"
@@ -369,7 +369,7 @@ const App: React.FC = () => {
                     />
                 </div>
                 {publicKey && <p>Connected Wallet: {publicKey.toBase58()}</p>}
-                <p>{balance !== null ? `Balance: ${balance} SOL` : ""}</p>
+                {publicKey && <p>{balance !== null ? `Balance: ${balance} SOL` : ""}</p>}
                 <div className="network-info">
                     <p>App Network: {network.includes("devnet") ? "Devnet" :
                                    network.includes("mainnet") ? "Mainnet" :
@@ -383,20 +383,21 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            <div className="main-content">
-                <h1>Speech to Text and Suggestions</h1>
-                {transcript ? (<button onClick={toggleListening} disabled={!publicKey}>
-                    {isListening ? "Stop Talking" : "Start Talking"}
-                            </button>
-                ): (<button onClick={toggleListening} disabled={!publicKey}>
-                    {isListening ? "Stop Talking" : "Continue Talking"}
-                </button>)
-                }
+            {publicKey && !networkMismatch && (
+                <div className="main-content">
+                    <h1>Speech to Text and Suggestions</h1>
+                    {transcript ? (<button onClick={toggleListening} disabled={!publicKey}>
+                        {isListening ? "Stop Talking" : "Start Talking"}
+                                </button>
+                    ): (<button onClick={toggleListening} disabled={!publicKey}>
+                        {isListening ? "Stop Talking" : "Continue Talking"}
+                    </button>)
+                    }
 
-                {isListening && <div className="loading"></div>}
+                    {isListening && <div className="loading"></div>}
 
-                <p id="output">User: {transcript}</p>
-                <p className="response">{response?.message && `Response: ${response.message}`}</p>
+                    <p id="output">User: {transcript}</p>
+                    <p className="response">{response?.message && `Response: ${response.message}`}</p>
 
                 <ul>
                     {conversationHistory.map((entry, index) => (
@@ -412,25 +413,26 @@ const App: React.FC = () => {
                     ))}
                 </ul>
 
-                {emotion && (
-                    <div className="emotion-list">
-                        {emotion.map(([key, value]) => (
-                            <div key={key} className="emotion-item">
-                                <span className="emotion-key">{key}</span>: <span className="emotion-value">{value}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                    {emotion && (
+                        <div className="emotion-list">
+                            {emotion.map(([key, value]) => (
+                                <div key={key} className="emotion-item">
+                                    <span className="emotion-key">{key}</span>: <span className="emotion-value">{value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
-                {emotion && (
-                    <button onClick={giveSuggestion} disabled={isListening}>
-                        Finalize and Get Suggestion <br />
-                        Costs: 0.001 SOL + Gas: 0.00003 SOL
-                    </button>
-                )}
-                {finalResponse && <div className="loading"></div>}
-                {finalResponse && <div className="response">{finalResponse.message}</div>}
-            </div>
+                    {emotion && (
+                        <button onClick={giveSuggestion} disabled={isListening}>
+                            Finalize and Get Suggestion <br />
+                            Costs: 0.001 SOL + Gas: 0.00003 SOL
+                        </button>
+                    )}
+                    {finalResponse && <div className="loading"></div>}
+                    {finalResponse && <div className="response">{finalResponse.message}</div>}
+                </div>
+            )}
         </div>
     );
 };
