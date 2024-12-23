@@ -338,7 +338,7 @@ const App: React.FC = () => {
     return (
         <div id="root-container">
             <div className="header">
-                <h1>Welcome to THERASOL</h1>
+                <h1>Welcome to TheraSol</h1>
             </div>
             <p>Currently supported on Chrome</p>
             <h2>Connect to a Wallet</h2>
