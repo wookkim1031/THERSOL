@@ -174,3 +174,26 @@ button:hover:not(:disabled) {
       transform: rotate(360deg);
   }
 }
+
+.network-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ffeeba;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.network-info {
+  background-color: #f8f9fa;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+
+.network-info p {
+  margin: 5px 0;
+  color: #495057;
+}
