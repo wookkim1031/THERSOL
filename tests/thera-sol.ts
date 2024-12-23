@@ -5,12 +5,37 @@ import { PublicKey, LAMPORTS_PER_SOL, Keypair } from "@solana/web3.js";
 import { expect } from 'chai';
 
 describe("thera-sol", () => {
-  // Configure the client to use the local cluster.
+  // Configure the client to use the devnet cluster
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
   const program = anchor.workspace.TheraSol as Program<TheraSol>;
   const user = provider.wallet;
+
+  // Helper function to confirm transaction with retries
+  const confirmTx = async (signature: string) => {
+    const latestBlockhash = await provider.connection.getLatestBlockhash();
+    await provider.connection.confirmTransaction({
+      signature,
+      ...latestBlockhash
+    }, "confirmed");
+  };
+
+  // Helper function for airdrop with confirmation
+  const requestAirdrop = async (address: PublicKey, amount: number) => {
+    const balance = await provider.connection.getBalance(address);
+    const minBalance = 0.5 * LAMPORTS_PER_SOL; // 0.5 SOL minimum balance
+    
+    if (balance < minBalance) {
+      // Cap airdrop request at 2 SOL (devnet limit)
+      const airdropAmount = Math.min(2 * LAMPORTS_PER_SOL, amount);
+      const signature = await provider.connection.requestAirdrop(address, airdropAmount);
+      await confirmTx(signature);
+      
+      // Wait a bit after airdrop to avoid rate limits
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  };
 
   const getUserPDA = async (userPubkey: PublicKey) => {
     const [pda] = await PublicKey.findProgramAddress(
@@ -26,12 +51,8 @@ describe("thera-sol", () => {
       const testUser = Keypair.generate();
       const userPDA = await getUserPDA(testUser.publicKey);
       
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        2 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       await program.methods
         .initializeUser()
@@ -55,14 +76,10 @@ describe("thera-sol", () => {
       // Create a new keypair for this test
       const testUser = Keypair.generate();
       const userPDA = await getUserPDA(testUser.publicKey);
-      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
+      const depositAmount = new anchor.BN(0.5 * LAMPORTS_PER_SOL); // 0.5 SOL
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        2 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
@@ -96,14 +113,10 @@ describe("thera-sol", () => {
       // Create a new keypair for this test
       const testUser = Keypair.generate();
       const userPDA = await getUserPDA(testUser.publicKey);
-      const depositAmount = new anchor.BN(2 * LAMPORTS_PER_SOL); // 2 SOL
+      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        3 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
@@ -145,14 +158,10 @@ describe("thera-sol", () => {
       // Create a new keypair for this test
       const testUser = Keypair.generate();
       const userPDA = await getUserPDA(testUser.publicKey);
-      const depositAmount = new anchor.BN(2 * LAMPORTS_PER_SOL); // 2 SOL
+      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        3 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
@@ -207,14 +216,10 @@ describe("thera-sol", () => {
       // Create a new keypair for this test
       const testUser = Keypair.generate();
       const userPDA = await getUserPDA(testUser.publicKey);
-      const depositAmount = new anchor.BN(2 * LAMPORTS_PER_SOL); // 2 SOL
+      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        3 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
@@ -269,14 +274,10 @@ describe("thera-sol", () => {
       // Create a new keypair for this test
       const testUser = Keypair.generate();
       const userPDA = await getUserPDA(testUser.publicKey);
-      const depositAmount = new anchor.BN(2 * LAMPORTS_PER_SOL); // 2 SOL
+      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        3 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
@@ -332,12 +333,8 @@ describe("thera-sol", () => {
       const testUser = Keypair.generate();
       const userPDA = await getUserPDA(testUser.publicKey);
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        2 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
@@ -371,14 +368,10 @@ describe("thera-sol", () => {
       // Create a new keypair for this test
       const testUser = Keypair.generate();
       const userPDA = await getUserPDA(testUser.publicKey);
-      const depositAmount = new anchor.BN(2 * LAMPORTS_PER_SOL); // 2 SOL
+      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        3 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
@@ -456,8 +449,8 @@ describe("thera-sol", () => {
         .signers([testUser])
         .rpc();
 
-      // Wait for transaction confirmation
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait longer for devnet confirmation
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Get the event from the transaction logs
       const txInfo = await provider.connection.getTransaction(tx, {
@@ -542,14 +535,10 @@ describe("thera-sol", () => {
       // Create a new keypair for this test
       const testUser = Keypair.generate();
       const userPDA = await getUserPDA(testUser.publicKey);
-      const depositAmount = new anchor.BN(2 * LAMPORTS_PER_SOL); // 2 SOL
+      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        3 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
@@ -619,8 +608,8 @@ describe("thera-sol", () => {
         .signers([testUser])
         .rpc();
 
-      // Wait for transaction confirmation
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait longer for devnet confirmation
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Get the event from the transaction logs
       const txInfo = await provider.connection.getTransaction(tx, {
@@ -674,12 +663,8 @@ describe("thera-sol", () => {
       const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
       const reclaimAmount = new anchor.BN(0.5 * LAMPORTS_PER_SOL); // 0.5 SOL
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        2 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
@@ -735,12 +720,8 @@ describe("thera-sol", () => {
       const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL); // 1 SOL
       const reclaimAmount = new anchor.BN(2 * LAMPORTS_PER_SOL); // 2 SOL (more than deposited)
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        2 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
@@ -788,12 +769,8 @@ describe("thera-sol", () => {
       const reclaimAmount = new anchor.BN(0.5 * LAMPORTS_PER_SOL); // 0.5 SOL
       const startTime = new anchor.BN(Math.floor(Date.now() / 1000));
 
-      // Fund the test user
-      const fundTx = await provider.connection.requestAirdrop(
-        testUser.publicKey,
-        2 * LAMPORTS_PER_SOL
-      );
-      await provider.connection.confirmTransaction(fundTx);
+      // Fund the test user (reduced amount for devnet)
+      await requestAirdrop(testUser.publicKey, 1.5 * LAMPORTS_PER_SOL);
 
       // Initialize the account
       await program.methods
