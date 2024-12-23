@@ -39,7 +39,6 @@ TheraSol bridges this gap by providing:
 - Funds essential services such as hosting and speech models
 - Ensures seamless operations, continuous improvement, and adaptation without external funding
 
-## Technical Implementation
 
 ## 🔧 Technical Implementation
 
