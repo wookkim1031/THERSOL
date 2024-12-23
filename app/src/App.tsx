@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, clusterApiUrl, Transaction, SystemProgram, PublicKey } from "@solana/web3.js";
+import EasySpeech from "easy-speech";
 import "./App.css";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -72,6 +73,7 @@ const App: React.FC = () => {
     const [finalResponse, setFinalResponse] = useState<APIResponse | null>(null);
     const [emotion, setEmotion] = useState<[string, number][] | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [sessionStarted, setSessionStarted] = useState(false);
     const url = "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/";
     const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
     const emotionURL = "https://api.assisterr.ai/api/v1/slm/motionundle/chat/";
@@ -84,6 +86,17 @@ const App: React.FC = () => {
             setIsConnecting(false);
         }
     }, [publicKey]);
+
+    useEffect(() => {
+        if (sessionStarted) {
+            const initialMessage = "Hello! Welcome to TheraSol. How are you feeling today?";
+            setConversationHistory((prevHistory) => [...prevHistory, `TheraSol: ${initialMessage}`]);
+    
+            const speech = new SpeechSynthesisUtterance(initialMessage);
+            speech.lang = "en-GB";
+            window.speechSynthesis.speak(speech);
+        }
+    }, [sessionStarted]);
 
     const Emotions = [
         { name: "Joy", value: 0 },
@@ -228,6 +241,7 @@ const App: React.FC = () => {
         sendRequest();
     }, [transcript]);
     const toggleListening = () => {
+        setSessionStarted(true);
         setIsListening(!isListening);
     };
 
@@ -347,7 +361,7 @@ const App: React.FC = () => {
                             fontWeight: index % 2 === 0 ? "bold" : "normal", 
                         }}
                         >
-                            {index % 2 === 0 ? "User: " : "TheraSol: "} {entry}
+                            {index % 2 === 0 ? "TheraSol: " : "User: "} {entry}
                         </li>
                     ))}
                 </ul>
