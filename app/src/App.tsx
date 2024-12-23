@@ -372,13 +372,6 @@ const App: React.FC = () => {
             {publicKey && !networkMismatch && (
                 <div className="main-content">
                     <h1>Speech to Text and Suggestions</h1>
-                    {transcript ? (<button onClick={toggleListening} disabled={!publicKey}>
-                        {isListening ? "Stop Talking" : "Start Talking"}
-                                </button>
-                    ): (<button onClick={toggleListening} disabled={!publicKey}>
-                        {isListening ? "Stop Talking" : "Continue Talking"}
-                    </button>)
-                    }
 
                     {isListening && <div className="loading"></div>}
 
@@ -417,6 +410,16 @@ const App: React.FC = () => {
                     )}
                     {finalResponse && <div className="loading"></div>}
                     {finalResponse && <div className="response">{finalResponse.message}</div>}
+
+                    {transcript ? (
+                        <button onClick={toggleListening} disabled={!publicKey} className="talk-button">
+                            {isListening ? "Stop Talking" : "Start Talking"}
+                        </button>
+                    ) : (
+                        <button onClick={toggleListening} disabled={!publicKey} className="talk-button">
+                            {isListening ? "Stop Talking" : "Continue Talking"}
+                        </button>
+                    )}
                 </div>
             )}
         </div>
