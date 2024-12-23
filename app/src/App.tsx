@@ -182,9 +182,44 @@ const App: React.FC = () => {
                 speaker: "TheraSol"
             }]);
 
-            const speech = new SpeechSynthesisUtterance(initialMessage);
-            speech.lang = "en-GB";
-            window.speechSynthesis.speak(speech);
+            try {
+                if (!window.speechSynthesis) {
+                    console.error("Speech synthesis not supported");
+                    return;
+                }
+
+                // Cancel any ongoing speech
+                window.speechSynthesis.cancel();
+
+                const speech = new SpeechSynthesisUtterance(initialMessage);
+                speech.lang = "en-GB";
+                
+                // Load and select voice
+                const voices = window.speechSynthesis.getVoices();
+                const selectedVoice = voices.find((voice) =>
+                    voice.name.includes("Daniel")
+                );
+                if (selectedVoice) speech.voice = selectedVoice;
+                
+                speech.onstart = () => {
+                    console.log("Speech started");
+                };
+                
+                speech.onend = () => {
+                    console.log("Speech ended");
+                };
+                
+                speech.onerror = (event) => {
+                    console.error("Speech error:", event);
+                };
+
+                // Add a small delay to ensure the speech synthesis is ready
+                setTimeout(() => {
+                    window.speechSynthesis.speak(speech);
+                }, 100);
+            } catch (error) {
+                console.error("Error in speech synthesis:", error);
+            }
         }
     }, [sessionStarted]);
 
