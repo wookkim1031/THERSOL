@@ -91,6 +91,7 @@ const App: React.FC = () => {
     const [isInitialized, setIsInitialized] = useState(false);
     const [theraSolBalance, setTheraSolBalance] = useState<number | null>(null);
     const [depositAmount, setDepositAmount] = useState<number>(0);
+    const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
     const url = "https://api.assisterr.ai/api/v1/slm/TheraSol/chat/";
     const apiKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
     const emotionURL = "https://api.assisterr.ai/api/v1/slm/motionundle/chat/";
@@ -518,6 +519,40 @@ const App: React.FC = () => {
         }
     };
 
+    const handleWithdraw = async () => {
+        if (!publicKey || withdrawAmount <= 0) return;
+
+        try {
+            const userPDA = await getUserPDA(publicKey);
+            const lamports = withdrawAmount * anchor.web3.LAMPORTS_PER_SOL;
+            
+            const transaction = await program.methods
+                .reclaimFunds(new anchor.BN(lamports))
+                .accounts({
+                    user: publicKey,
+                    userAccount: userPDA,
+                })
+                .transaction();
+
+            const transactionSignature = await sendTransaction(
+                transaction,
+                connection
+            );
+
+            await connection.confirmTransaction(transactionSignature, "confirmed");
+            console.log("Successfully withdrawn:", withdrawAmount, "SOL");
+            
+            // Refresh the balances
+            const userAccount = await program.account.userAccount.fetch(userPDA) as UserAccount;
+            setTheraSolBalance(userAccount.balance.toNumber() / anchor.web3.LAMPORTS_PER_SOL);
+            
+            // Reset withdraw amount
+            setWithdrawAmount(0);
+        } catch (error) {
+            console.error("Error withdrawing funds:", error);
+        }
+    };
+
     return (
         <div id="root-container">
             <div className="header">
@@ -548,23 +583,43 @@ const App: React.FC = () => {
                             </button>
                         )}
                         {isInitialized && (
-                            <div className="deposit-controls">
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.1"
-                                    value={depositAmount}
-                                    onChange={(e) => setDepositAmount(Number(e.target.value))}
-                                    placeholder="Amount in SOL"
-                                    className="deposit-input"
-                                />
-                                <button 
-                                    onClick={handleDeposit} 
-                                    className="action-button"
-                                    disabled={depositAmount <= 0}
-                                >
-                                    Deposit to TheraSol Wallet
-                                </button>
+                            <div className="wallet-controls">
+                                <div className="deposit-controls">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.1"
+                                        value={depositAmount}
+                                        onChange={(e) => setDepositAmount(Number(e.target.value))}
+                                        placeholder="Amount in SOL"
+                                        className="deposit-input"
+                                    />
+                                    <button 
+                                        onClick={handleDeposit} 
+                                        className="action-button"
+                                        disabled={depositAmount <= 0}
+                                    >
+                                        Deposit to TheraSol Wallet
+                                    </button>
+                                </div>
+                                <div className="withdraw-controls">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.1"
+                                        value={withdrawAmount}
+                                        onChange={(e) => setWithdrawAmount(Number(e.target.value))}
+                                        placeholder="Amount in SOL"
+                                        className="withdraw-input"
+                                    />
+                                    <button 
+                                        onClick={handleWithdraw} 
+                                        className="action-button"
+                                        disabled={withdrawAmount <= 0 || (theraSolBalance !== null && withdrawAmount > theraSolBalance)}
+                                    >
+                                        Withdraw from TheraSol Wallet
+                                    </button>
+                                </div>
                             </div>
                         )}
                         <button onClick={startTheSession} className="action-button" disabled={!isInitialized}>
