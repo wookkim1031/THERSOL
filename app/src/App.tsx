@@ -6,6 +6,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { connection, getUserPDA, program } from "./anchor/setup";
 import "./App.css";
 import "@solana/wallet-adapter-react-ui/styles.css";
+import { DoctorScene } from './components/DoctorScene';
 
 // Type definitions
 interface SpeechRecognition extends EventTarget {
@@ -103,6 +104,7 @@ const App: React.FC = () => {
     const emotionAPIKey = "oPnCa0g1e2xarySmIuMhy6TuSYBILf0nHzzbTp4-jYU";
     const myPublicKey = new PublicKey("A6aGukho6tY2abd8h7pcsLsQRgncu9WBjy3mYSjqUTAJ");
     const paymentAmount = 0.001 * Math.pow(10, 9);
+    const [doctorAnimation, setDoctorAnimation] = useState<string>('idle');
 
     useEffect(() => {
         console.log('Current network:', connection.rpcEndpoint);
@@ -292,6 +294,8 @@ const App: React.FC = () => {
             );
             if (selectedVoice) speech.voice = selectedVoice;
 
+            setDoctorAnimation('talk');
+            speech.onend = () => setDoctorAnimation('idle');
             window.speechSynthesis.speak(speech);
         }
     }, [response]);
@@ -644,6 +648,9 @@ const App: React.FC = () => {
         <div id="root-container">
             <div className="header">
                 <h1>Welcome to TheraSol</h1>
+                {publicKey && !networkMismatch && sessionStarted && (
+                    <DoctorScene animationName={doctorAnimation} />
+                )}
             </div>
             <p>Currently supported on Chrome Version &gt;130</p>
             {!publicKey && <h2>Connect to a Wallet</h2>}

@@ -7,9 +7,10 @@ body {
 }
 
 .header {
-  display:flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  margin-bottom: 2rem;
 }
 
 .emotion-list {
@@ -340,4 +341,16 @@ button:hover:not(:disabled) {
   outline: none;
   border-color: #4CAF50;
   box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+.doctor-scene {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.doctor-scene canvas {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
