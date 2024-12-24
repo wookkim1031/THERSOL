@@ -60,6 +60,11 @@ interface Emotions {
     Disgust: number;
 }
 
+interface ConversationEntry {
+    message: string;
+    speaker: "User" | "TheraSol";
+}
+
 // User account type from the smart contract
 type UserAccount = {
     owner: PublicKey;
@@ -79,7 +84,7 @@ const App: React.FC = () => {
     const { connection } = useConnection();
     const [balance, setBalance] = useState<number | null>(null);
     const [transcript, setTranscript] = useState<string>("");
-    const [conversationHistory, setConversationHistory] = useState<string[]>([]);
+    const [conversationHistory, setConversationHistory] = useState<ConversationEntry[]>([]);
     const [isListening, setIsListening] = useState<boolean>(false);
     const [response, setResponse] = useState<APIResponse | null>(null);
     const [finalResponse, setFinalResponse] = useState<APIResponse | null>(null);
@@ -169,6 +174,55 @@ const App: React.FC = () => {
         checkIfInitialized();
     }, [publicKey]);
 
+    useEffect(() => {
+        if (sessionStarted) {
+            const initialMessage = "Hello! Welcome to TheraSol. How are you feeling today?";
+            setConversationHistory((prevHistory) => [...prevHistory, {
+                message: initialMessage,
+                speaker: "TheraSol"
+            }]);
+
+            try {
+                if (!window.speechSynthesis) {
+                    console.error("Speech synthesis not supported");
+                    return;
+                }
+
+                // Cancel any ongoing speech
+                window.speechSynthesis.cancel();
+
+                const speech = new SpeechSynthesisUtterance(initialMessage);
+                speech.lang = "en-GB";
+                
+                // Load and select voice
+                const voices = window.speechSynthesis.getVoices();
+                const selectedVoice = voices.find((voice) =>
+                    voice.name.includes("Daniel")
+                );
+                if (selectedVoice) speech.voice = selectedVoice;
+                
+                speech.onstart = () => {
+                    console.log("Speech started");
+                };
+                
+                speech.onend = () => {
+                    console.log("Speech ended");
+                };
+                
+                speech.onerror = (event) => {
+                    console.error("Speech error:", event);
+                };
+
+                // Add a small delay to ensure the speech synthesis is ready
+                setTimeout(() => {
+                    window.speechSynthesis.speak(speech);
+                }, 100);
+            } catch (error) {
+                console.error("Error in speech synthesis:", error);
+            }
+        }
+    }, [sessionStarted]);
+
     const Emotions = [
         { name: "Joy", value: 0 },
         { name: "Sadness", value: 0 },
@@ -197,7 +251,10 @@ const App: React.FC = () => {
 
         recognition.onend = () => {
             if (transcript) {
-                setConversationHistory((prevHistory) => [...prevHistory, transcript]);
+                setConversationHistory((prevHistory) => [...prevHistory, {
+                    message: transcript,
+                    speaker: "User"
+                }]);
                 setTranscript("");
             }
             console.log("Speech recognition ended.");
@@ -245,7 +302,7 @@ const App: React.FC = () => {
                 try {
                     const conversationContext =
                         "Conversation until now: " +
-                        conversationHistory.join(" ") +
+                        conversationHistory.map(entry => entry.message).join(" ") +
                         ". If a previous conversation exists, answer the question based on the knowledge of the previous answers: " +
                         transcript;
 
@@ -267,7 +324,10 @@ const App: React.FC = () => {
 
                     const responseData = await response.json();
                     setResponse(responseData);
-                    setConversationHistory((prevHistory) => [...prevHistory, responseData.message]);
+                    setConversationHistory((prevHistory) => [...prevHistory, {
+                        message: responseData.message,
+                        speaker: "TheraSol"
+                    }]);
 
                     // emotion Detection
                     const emotionResponse = await fetch("/api/v1/slm/motionundle/chat/", {
@@ -304,6 +364,7 @@ const App: React.FC = () => {
     }, [transcript]);
 
     const toggleListening = () => {
+        setSessionStarted(true);
         setIsListening(!isListening);
     };
 
@@ -351,7 +412,7 @@ const App: React.FC = () => {
             const emotionsString = Emotions.map((item) => `${item.name}: ${item.value}`).join(", ");
             const summary =
                 "Give a summary and suggestion about person's situation and how the person feels using emotion"
-                + conversationHistory
+                + conversationHistory.map(entry => entry.message).join(" ")
                 + "Also rate the person's emotion based on the Emotion. The higher the score is the higher the emotion is"
                 + emotionsString;
             const response = await fetch("/api/v1/slm/TheraSol/chat/", {
@@ -369,7 +430,10 @@ const App: React.FC = () => {
 
             const responseData = await response.json();
             setFinalResponse(responseData);
-            setConversationHistory((prevHistory) => [...prevHistory, responseData.message]);
+            setConversationHistory((prevHistory) => [...prevHistory, {
+                message: responseData.message,
+                speaker: "TheraSol"
+            }]);
 
         } catch (error) {
             console.error("Error in giveSuggestion:", error);
@@ -378,6 +442,7 @@ const App: React.FC = () => {
 
     const startTheSession = async () => {
         if (!publicKey) return;
+        // setSessionStarted(true);
 
         try {
             const userPDA = await getUserPDA(publicKey);
@@ -580,7 +645,7 @@ const App: React.FC = () => {
             <div className="header">
                 <h1>Welcome to TheraSol</h1>
             </div>
-            <p>Currently supported on Chrome</p>
+            <p>Currently supported on Chrome Version &gt;130</p>
             {!publicKey && <h2>Connect to a Wallet</h2>}
             <div className="wallet-connect-card">
                 <div className={`wallet-button-wrapper ${
@@ -684,11 +749,11 @@ const App: React.FC = () => {
                             <li
                             key={index}
                             style={{
-                                color: index % 2 === 0 ? "#007bff" : "#28a745",
-                                fontWeight: index % 2 === 0 ? "bold" : "normal",
+                                color: entry.speaker === "User" ? "#007bff" : "#28a745",
+                                fontWeight: entry.speaker === "User" ? "bold" : "normal",
                             }}
                             >
-                                {index % 2 === 0 ? "User: " : "TheraSol: "} {entry}
+                                {entry.speaker}: {entry.message}
                             </li>
                         ))}
                     </ul>
@@ -703,6 +768,7 @@ const App: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Finalize and Get Suggestion button temporarily disabled
                     {emotion && (
                         <button onClick={giveSuggestion} disabled={isListening}>
                             Finalize and Get Suggestion <br />
@@ -711,6 +777,7 @@ const App: React.FC = () => {
                     )}
                     {finalResponse && <div className="loading"></div>}
                     {finalResponse && <div className="response">{finalResponse.message}</div>}
+                    */}
 
                     <button
                         onClick={toggleListening}
