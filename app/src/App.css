@@ -344,6 +344,20 @@ button:hover:not(:disabled) {
 }
 
 .doctor-scene {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.doctor-scene canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.doctor-scene {
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
