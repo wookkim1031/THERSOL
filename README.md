@@ -1,5 +1,7 @@
 # TheraSol - AI Therapy on Solana Blockchain 🧠💫
 
+Presented at https://www.solanaaihackathon.com/projects as "therasol"
+
 TheraSol revolutionizes mental health support by combining the power of AI therapy with blockchain technology, making professional-grade mental health assistance accessible 24/7 at micro-transaction costs.
 
 ## 🌟 Vision
